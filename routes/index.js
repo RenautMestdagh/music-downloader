@@ -6,8 +6,6 @@ const axios = require('axios');
 const youtubedl = require('youtube-dl-exec');
 require('node-openvpn');
 const {execSync} = require("child_process");
-const cp = require("child_process");
-const { spawn } = require('child_process');
 const sharp = require('sharp');
 
 let ytPlaylists = {};
@@ -18,40 +16,28 @@ let vpnQueue
 
 const maxAtSameTime = 10
 let currentAtSameTime = 0
-let busy = false
-let update = false
-let toExecute = false
 
 let playlistCollection = require('../playlists.json');
 
-let ffmpegPath
 let libPath
 let jfUrl
 
 if (process.env.NODE_ENV === "production"){
-    ffmpegPath = "/usr/bin/ffmpeg";
     libPath = "/media/OneDrive/"
     jfUrl = "http://localhost:8096"
+
 } else {
-    ffmpegPath = path.join(__dirname, '../ffmpeg.exe');
-    jfUrl = "https://renautmusic.ml"
+    jfUrl = "http://193.123.36.128"
     if(process.platform === "linux")
         libPath = "/mnt/c/Users/renau/OneDrive/Muziek/"
     else
         libPath = "/Users/renau/OneDrive/Muziek/"
 }
+setTimeout(executeAll, 30000)
 
 /* GET home page. */
 router.get('/', function(req, res) {
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
-
-    if(toExecute){
-        toExecute = false
-        if(!busy)
-            executeAll();
-        else
-            update=true
-    }
 });
 
 router.post('/', function(req, res) {
@@ -88,7 +74,7 @@ router.post('/', function(req, res) {
                 )
                 newPlaylists.push({"name":el.plS,"ytID":el.ID,"jfID":jfPlId.data.Id})
 
-            } else {    // naam jf playlist aanpassen
+            } else {    // in bestaande jf playlist
                 if(playlistObj.name!==el.plS)   // als niet de zelfde naam (yt playlist ID is veranderd)
                     await axios.post(
                         jfUrl+"/Items/"+playlistObj.jfID+"?api_key="+process.env.JF_API_KEY, {
@@ -129,7 +115,6 @@ router.post('/', function(req, res) {
         fs.writeFileSync(path.join(__dirname, '../playlists.json'), "{\"playlists\":"+JSON.stringify(newPlaylists)+"}");
         playlistCollection = {playlists:newPlaylists}
 
-        toExecute = true
         res.send("k")
     }
     verwerk()
@@ -139,22 +124,15 @@ async function executeAll(){
     clearTimeout(nextExecute);
 
     console.log(getTimeStamp()+"----- Execution started -----")
-    busy=true
-    update=false
-    await getLibrary().then(async function(){
-        clearOldTmp().then(async function(){
-            getLinks().then(function(){
-                console.log(getTimeStamp()+"----- Execution complete -----")
-                console.log("|")
-                busy=false
-                nextExecute = setTimeout(executeAll, 600000)    // om de 10 minuten alles uitvoeren
-                if(update)
-                    executeAll();
-            })
-        })
-    })
+
+    await getLibrary()
+    clearOldTmp()
+    await getLinks()
+    nextExecute = setTimeout(executeAll, 900000)    // om de 15 minuten alles uitvoeren
+
+    console.log(getTimeStamp()+"----- Execution complete -----")
+    console.log("|")
 }
-setTimeout(executeAll, 120000)
 
 async function getLibrary() {
 
@@ -166,7 +144,7 @@ async function getLibrary() {
     lib = lib.data.Items
 }
 
-async function clearOldTmp() {
+function clearOldTmp() {
 
     for(const file of fs.readdirSync(path.join(__dirname, '../tmp/songs/')))
         fs.unlinkSync(path.join(__dirname, '../tmp/songs/'+file))
@@ -433,31 +411,31 @@ async function downloadSong(id){//, vpn){
     }
 }
 
-async function connectVPN(){
-
-    const vpnProcess = spawn('/bin/sh', ['./vpn/connect.sh'], { shell: true });
-
-    let prev
-    let currIp
-
-    await cp.exec('curl ifconfig.me', function(err, stdout) {
-        prev=stdout
-        currIp=stdout
-    });
-
-    let tryNr=0
-    while(prev===currIp){    // wachten tegen da vpn verbonden is
-        await new Promise(r => setTimeout(r, 5000));
-        await cp.exec('curl ifconfig.me', function(err, stdout) {
-            currIp=stdout
-        });
-        tryNr++
-        if(tryNr>5)
-            throw new Error('Unable to connect to vpn');
-
-    }
-    return vpnProcess
-}
+// async function connectVPN(){
+//
+//     const vpnProcess = spawn('/bin/sh', ['./vpn/connect.sh'], { shell: true });
+//
+//     let prev
+//     let currIp
+//
+//     await cp.exec('curl ifconfig.me', function(err, stdout) {
+//         prev=stdout
+//         currIp=stdout
+//     });
+//
+//     let tryNr=0
+//     while(prev===currIp){    // wachten tegen da vpn verbonden is
+//         await new Promise(r => setTimeout(r, 5000));
+//         await cp.exec('curl ifconfig.me', function(err, stdout) {
+//             currIp=stdout
+//         });
+//         tryNr++
+//         if(tryNr>5)
+//             throw new Error('Unable to connect to vpn');
+//
+//     }
+//     return vpnProcess
+// }
 
 function sameConfig(ell){
     for(const el of Object.values(playlistCollection.playlists))
