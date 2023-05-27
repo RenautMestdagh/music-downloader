@@ -303,6 +303,7 @@ async function downloadSong(id){//, vpn){
     let metadata
 
     try{
+        console.log("1-"+id)
         metadata = await youtubedl("https://music.youtube.com/watch?v="+id, {
             dumpSingleJson: true,
             noCheckCertificates: true,
@@ -314,7 +315,7 @@ async function downloadSong(id){//, vpn){
             ],
             //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
         })
-
+        console.log("2-"+id)
         await youtubedl("https://music.youtube.com/watch?v="+id, {
             noCheckCertificates: true,
             noWarnings: true,
@@ -327,6 +328,7 @@ async function downloadSong(id){//, vpn){
             format: "bestaudio",
             //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
         }).then(function(){
+            console.log("3-"+id)
             if(!fs.existsSync('tmp/songs/'+id+"X.mp3")){
                 console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
                 return currentAtSameTime--
@@ -360,7 +362,6 @@ async function downloadSong(id){//, vpn){
                             .resize(1080, 1080)
                             .toFile('tmp/img/' + metadata.id + ".jpg")
                             .catch(err => console.log(`downisze issue ${err}`))
-
                     })
                 break
             } catch (e) {
@@ -370,6 +371,7 @@ async function downloadSong(id){//, vpn){
                 }
             }
         }
+        console.log("4-"+id)
 
 
         //'ffmpeg -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 ' +
