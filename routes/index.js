@@ -11,9 +11,11 @@ const sharp = require('sharp');
 let ytPlaylists = {};
 let jfPlaylists = {};
 let lib;
-let nextExecute
+const nextExecutions = []; // Array to store the planned executions
 let vpnQueue
 
+const slowInterval =60*60*1000 // 1 uur
+let repeatInterval =  15*60*1000 // 15 minuten
 const maxAtSameTime = 10
 let currentAtSameTime = 0
 
@@ -33,7 +35,7 @@ if (process.env.NODE_ENV === "production"){
     else
         libPath = "/Users/renau/OneDrive/Muziek/"
 }
-setTimeout(executeAll, 30000)
+nextExecutions.push(setTimeout(executeAll, 30000))
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -51,6 +53,8 @@ router.post('/', function(req, res) {
         }
         if((new Set(IDs)).size !== IDs.length || (new Set(plS).size !== plS.length))
             return res.send("duplicates")
+
+        res.send("k")
 
         let playlistsRef = playlistCollection.playlists
         let newPlaylists = []
@@ -115,20 +119,24 @@ router.post('/', function(req, res) {
         fs.writeFileSync(path.join(__dirname, '../playlists.json'), "{\"playlists\":"+JSON.stringify(newPlaylists)+"}");
         playlistCollection = {playlists:newPlaylists}
 
-        res.send("k")
+        if(nextExecutions.length > 0)
+            nextExecutions.push(setTimeout(executeAll, 0))
     }
     verwerk()
 });
 
 async function executeAll(){
-    clearTimeout(nextExecute);
+    // code is here
+    for (const el of nextExecutions)
+        clearTimeout(el);
+    nextExecutions.length = 0;
 
     console.log(getTimeStamp()+"----- Execution started -----")
 
     await getLibrary()
     clearOldTmp()
     await getLinks()
-    nextExecute = setTimeout(executeAll, 900000)    // om de 15 minuten alles uitvoeren
+    nextExecutions.push(setTimeout(executeAll, repeatInterval))    // om de 15 minuten alles uitvoeren
 
     console.log(getTimeStamp()+"----- Execution complete -----")
     console.log("|")
@@ -158,6 +166,7 @@ async function getLinks() {
     ytPlaylists = {};
     const songs = new Set();
     vpnQueue = new Set();
+    let APIcalls=0
 
     for(let el of playlistCollection.playlists) {
         let url = el.ytID
@@ -171,8 +180,11 @@ async function getLinks() {
                     method: "get",
                     url: "https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50"+pageToken+"&playlistId="+url+"&key="+process.env.YT_API_KEY,
                 })
+                APIcalls++
             } catch(e){
-                return console.error(e)    // wss quota overschreden
+                repeatInterval=slowInterval
+                console.error(e)    // wss quota overschreden
+                return console.error(getTimeStamp()+"Error YouTube API ↑")
             }
             pageToken = "&pageToken="+response.data.nextPageToken
 
@@ -185,6 +197,8 @@ async function getLinks() {
 
         console.log(getTimeStamp()+"YouTube playlist \""+el.name+"\" contains "+ytPlaylists[url].size+" items")
     }
+
+    repeatInterval = Math.max( 60000, Math.ceil(86400000/(10000/(APIcalls*1.25)) ) ) //    ms in day / (10.000 api calls per day / (nr of api calls with margin))
 
     //checken als er liedjes in JF playlist zitten die niet in een yt playlist zitten
     for(let el of playlistCollection.playlists) {
@@ -303,7 +317,6 @@ async function downloadSong(id){//, vpn){
     let metadata
 
     try{
-        console.log("1-"+id)
         metadata = await youtubedl("https://music.youtube.com/watch?v="+id, {
             dumpSingleJson: true,
             noCheckCertificates: true,
@@ -315,7 +328,7 @@ async function downloadSong(id){//, vpn){
             ],
             //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
         })
-        console.log("2-"+id)
+
         await youtubedl("https://music.youtube.com/watch?v="+id, {
             noCheckCertificates: true,
             noWarnings: true,
@@ -328,7 +341,6 @@ async function downloadSong(id){//, vpn){
             format: "bestaudio",
             //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
         }).then(function(){
-            console.log("3-"+id)
             if(!fs.existsSync('tmp/songs/'+id+"X.mp3")){
                 console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
                 return currentAtSameTime--
@@ -362,6 +374,7 @@ async function downloadSong(id){//, vpn){
                             .resize(1080, 1080)
                             .toFile('tmp/img/' + metadata.id + ".jpg")
                             .catch(err => console.log(`downisze issue ${err}`))
+
                     })
                 break
             } catch (e) {
@@ -371,7 +384,6 @@ async function downloadSong(id){//, vpn){
                 }
             }
         }
-        console.log("4-"+id)
 
 
         //'ffmpeg -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 ' +
