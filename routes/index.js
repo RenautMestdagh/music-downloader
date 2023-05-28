@@ -126,7 +126,6 @@ router.post('/', function(req, res) {
 });
 
 async function executeAll(){
-    // code is here
     for (const el of nextExecutions)
         clearTimeout(el);
     nextExecutions.length = 0;
@@ -136,7 +135,7 @@ async function executeAll(){
     await getLibrary()
     clearOldTmp()
     await getLinks()
-    nextExecutions.push(setTimeout(executeAll, repeatInterval))    // om de 15 minuten alles uitvoeren
+    nextExecutions.push(setTimeout(executeAll, repeatInterval))
 
     console.log(getTimeStamp()+"----- Execution complete -----")
     console.log("|")
