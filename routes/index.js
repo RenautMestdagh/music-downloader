@@ -180,6 +180,8 @@ async function getLinks() {
                     url: "https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50"+pageToken+"&playlistId="+url+"&key="+process.env.YT_API_KEY,
                 })
                 APIcalls++
+                if(APIcalls>9950)
+                    return console.error(getTimeStamp()+"Too many API calls for one day in one cycle")
             } catch(e){
                 repeatInterval=slowInterval
                 console.error(e)    // wss quota overschreden
@@ -197,7 +199,9 @@ async function getLinks() {
         console.log(getTimeStamp()+"YouTube playlist \""+el.name+"\" contains "+ytPlaylists[url].size+" items")
     }
 
-    repeatInterval = Math.max( 60000, Math.ceil(86400000/(10000/(APIcalls*1.25)) ) ) //    ms in day / (10.000 api calls per day / (nr of api calls with margin))
+    repeatInterval = Math.max( 60000, Math.ceil(86400000/(10000/(APIcalls*1.25)) ) ) //    ms in day / (10.000 api calls per day / (nr of api calls with margin)) with minimum of once every 1 minute
+    if(repeatInterval>86400000) // if more than 8000 API calls, just do it once every day
+        repeatInterval =86400000;
 
     //checken als er liedjes in JF playlist zitten die niet in een yt playlist zitten
     for(let el of playlistCollection.playlists) {
