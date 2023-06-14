@@ -278,6 +278,7 @@ async function downloadSong(id){
 
     let metadata
 
+    let test=0
     try{
         metadata = await youtubedl("https://music.youtube.com/watch?v="+id, {
             dumpSingleJson: true,
@@ -289,6 +290,7 @@ async function downloadSong(id){
                 'user-agent:googlebot'
             ],
         })
+        test++
 
         await youtubedl("https://music.youtube.com/watch?v="+id, {
             noCheckCertificates: true,
@@ -300,91 +302,87 @@ async function downloadSong(id){
             ],
             output:"tmp/songs/"+id+"X.mp3",
             format: "bestaudio",
-        }).then(function(){
-            if(true)
-                process()
-                // if(false){
-                //     // console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
-                //     // return currentAtSameTime--
-                // }
-                // process()
-            })
+        })//.then(async function(){
+        //     if(true)
+        //         await process()
+        //         // if(false){
+        //         //     // console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
+        //         //     // return currentAtSameTime--
+        //         // }
+        //         // process()
+        //     })
+        test++
 
     } catch (e) {
         // console.error(e)
+        console.error(getTimeStamp()+test)
         console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download")
-        //if(!vpn)
-          //  vpnQueue.add(id)
         return currentAtSameTime --
     }
 
-    async function process(){
+    let count = 0;
+    const maxTries = 5;
+    while(true) {
+        try{
+            await axios
+                .get(metadata.thumbnail, {
+                    responseType: "text",
+                    responseEncoding: "base64",
+                })
+                .then(async (resp) => {
+                    const uri = resp.data.split(';base64,').pop()
+                    let imgBuffer = Buffer.from(uri, 'base64');
+                    await sharp(imgBuffer)
+                        .resize(1080, 1080)
+                        .toFile('tmp/img/' + metadata.id + ".jpg")
+                        .catch(err => console.log(`downisze issue ${err}`))
 
-        let count = 0;
-        const maxTries = 5;
-        while(true) {
-            try{
-                await axios
-                    .get(metadata.thumbnail, {
-                        responseType: "text",
-                        responseEncoding: "base64",
-                    })
-                    .then(async (resp) => {
-                        const uri = resp.data.split(';base64,').pop()
-                        let imgBuffer = Buffer.from(uri, 'base64');
-                        await sharp(imgBuffer)
-                            .resize(1080, 1080)
-                            .toFile('tmp/img/' + metadata.id + ".jpg")
-                            .catch(err => console.log(`downisze issue ${err}`))
-
-                    })
-                break
-            } catch (e) {
-                if (++count === maxTries) {
-                    console.error(getTimeStamp()+"Picture "+metadata.thumbnail+" failed to download")
-                    return currentAtSameTime--
-                }
+                })
+            break
+        } catch (e) {
+            if (++count === maxTries) {
+                console.error(getTimeStamp()+"Picture "+metadata.thumbnail+" failed to download")
+                return currentAtSameTime--
             }
         }
-
-        //'ffmpeg -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 ' +
-        //             ' -metadata title="' + metadata.track +
-        //             '" -metadata artist="' + metadata.artist +
-        //             '" -metadata album="' + metadata.album +
-        //             '" tmp/songs/' + id + ".mp3"
-
-        let toExecute = 'ffmpeg -hide_banner -loglevel error -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 '
-        if(metadata.track)
-            toExecute += ' -metadata title="' + metadata.track.replaceAll('"','\\"').replaceAll(/'/g,'\'')
-        else
-            toExecute += ' -metadata title="' + metadata.uploader.replaceAll('"','\\"').replaceAll(/'/g,'\'')
-        if(metadata.artist)
-            toExecute += '" -metadata artist="' + metadata.artist.replaceAll('"','\\"').replaceAll(/'/g,'\'')
-        else
-            toExecute += '" -metadata artist="' + metadata.fulltitle.replaceAll('"','\\"').replaceAll(/'/g,'\'')
-        if(metadata.album)
-            toExecute += '" -metadata album="' + metadata.album.replaceAll('"','\\"').replaceAll(/'/g,'\'')
-        toExecute += '" tmp/songs/' + id + ".mp3"
-
-        try{
-            console.log(execSync('ls tmp/songs', {encoding: 'utf-8'}));
-            return
-        } catch(e) {
-            console.error(getTimeStamp()+"Setting metadata failed")
-            return currentAtSameTime--
-        }
-
-        fs.unlinkSync('tmp/songs/' + metadata.id + 'X.mp3')
-
-        execSync('ffmpeg -hide_banner -loglevel error -i tmp/songs/' + id + ".mp3"+' -i tmp/img/' + id + ".jpg -map 0:0 -map 1:0 -c copy -id3v2_version 3 " +
-            "-metadata:s:v title=\"Album cover\" -metadata:s:v comment=\"Cover (front)\" "+storagePath + id + ".mp3", { encoding: 'utf-8' });  // the default is 'buffer'
-
-        fs.unlinkSync('tmp/songs/' + metadata.id + '.mp3')
-        fs.unlinkSync('tmp/img/' + metadata.id + '.jpg')
-
-        console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+metadata.id+" downloaded")
-        currentAtSameTime--
     }
+
+    //'ffmpeg -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 ' +
+    //             ' -metadata title="' + metadata.track +
+    //             '" -metadata artist="' + metadata.artist +
+    //             '" -metadata album="' + metadata.album +
+    //             '" tmp/songs/' + id + ".mp3"
+
+    let toExecute = 'ffmpeg -hide_banner -loglevel error -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 '
+    if(metadata.track)
+        toExecute += ' -metadata title="' + metadata.track.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+    else
+        toExecute += ' -metadata title="' + metadata.uploader.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+    if(metadata.artist)
+        toExecute += '" -metadata artist="' + metadata.artist.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+    else
+        toExecute += '" -metadata artist="' + metadata.fulltitle.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+    if(metadata.album)
+        toExecute += '" -metadata album="' + metadata.album.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+    toExecute += '" tmp/songs/' + id + ".mp3"
+
+    try{
+        execSync(toExecute, {encoding: 'utf-8'});
+    } catch(e) {
+        console.error(getTimeStamp()+"Setting metadata failed")
+        return currentAtSameTime--
+    }
+
+    fs.unlinkSync('tmp/songs/' + metadata.id + 'X.mp3')
+
+    execSync('ffmpeg -hide_banner -loglevel error -i tmp/songs/' + id + ".mp3"+' -i tmp/img/' + id + ".jpg -map 0:0 -map 1:0 -c copy -id3v2_version 3 " +
+        "-metadata:s:v title=\"Album cover\" -metadata:s:v comment=\"Cover (front)\" "+storagePath + id + ".mp3", { encoding: 'utf-8' });  // the default is 'buffer'
+
+    fs.unlinkSync('tmp/songs/' + metadata.id + '.mp3')
+    fs.unlinkSync('tmp/img/' + metadata.id + '.jpg')
+
+    console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+metadata.id+" downloaded")
+    currentAtSameTime--
 }
 
 function jfSongObjToYtId(songObj) {
