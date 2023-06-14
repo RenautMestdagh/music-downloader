@@ -102,32 +102,28 @@ function removeNode(e){
 function submit(){
     document.getElementsByTagName("p")[0].innerText = ""
     const input = document.getElementsByClassName("playlistEl")
-    const daata = []
-    for(const el of input){
-        if(el.nextSibling === document.getElementsByTagName("button")[0])
+    const newData = []
+    for(const playlistEntry of input){
+        if(playlistEntry.nextSibling === document.getElementsByTagName("button")[0])
             break
-        const ID = el.getElementsByClassName("ytIdInput")[0].value
-        let plS = el.getElementsByTagName("select")[0].value
-        let optionValues = [...el.getElementsByTagName("select")[0].options].map(o => o.value)
-        let nieuw = false
-        if(plS === "NIEUWE PLAYLIST") {
-            plS = el.getElementsByTagName("input")[el.getElementsByTagName("input").length-1].value
-            if(!optionValues.includes(plS))
-                nieuw = true
+        const ID = playlistEntry.getElementsByClassName("ytIdInput")[0].value
+        let entryName = playlistEntry.getElementsByTagName("select")[0].value
+        if(entryName === "NIEUWE PLAYLIST") {
+            entryName = playlistEntry.getElementsByTagName("input")[playlistEntry.getElementsByTagName("input").length-1].value
         }
-        if(ID.length!==34 || plS==="")
+        if(ID.length!==34 || entryName==="")
             return invalid()
         else
-            daata.push({ID, plS, nieuw})
+            newData.push({ID, entryName})
     }
 
     const IDs = []
-    const plS = []
-    for (const el of daata){
-        IDs.push(el.ID)
-        plS.push(el.plS)
+    const names = []
+    for (const POSTEntry of newData){
+        IDs.push(POSTEntry.ID)
+        names.push(POSTEntry.entryName)
     }
-    if((new Set(IDs)).size !== IDs.length || (new Set(plS).size !== plS.length))       // duplicate yt id or jf name
+    if((new Set(IDs)).size !== IDs.length || (new Set(names).size !== names.length))       // duplicate yt id or jf name
         return invalid()
 
     let xhr = new XMLHttpRequest();
@@ -147,7 +143,7 @@ function submit(){
         else
             location.reload()
     }
-    xhr.send(JSON.stringify(daata));
+    xhr.send(JSON.stringify(newData));
 }
 
 function invalid(){

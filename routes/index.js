@@ -4,15 +4,15 @@ const path = require("path");
 const fs = require("fs");
 const axios = require('axios');
 const youtubedl = require('youtube-dl-exec');
-require('node-openvpn');
 const {execSync} = require("child_process");
 const sharp = require('sharp');
 
 let ytPlaylists = {};
-let jfPlaylists = {};
-let lib;
+let jfPlaylists;
+let jfLibrary;
+let downloadedFiles;
+let ytSongs;
 const nextExecutions = []; // Array to store the planned executions
-let vpnQueue
 
 const slowInterval =60*60*1000 // 1 uur
 let repeatInterval =  15*60*1000 // 15 minuten
@@ -21,23 +21,30 @@ let currentAtSameTime = 0
 
 let playlistCollection = require('../playlists.json');
 
-let libPath
+let storagePath
 let jfUrl
 
+// jfLibrary = [songObj, songObj, ...]
+// jfPlaylists = { jfID:[songObj, songObj, ...], jfID:[songObj, songObj, ...] }
+//
+// downloadedFiles = ["abc.mp3", "xyz.mp3", ...]
+//
+// ytSongs = Set(songId, songId, ...)
+// ytPlaylists = {ytPlaylistId: Set(songId, songId, ...), ytPlaylistId: Set(songId, songId, ...), ...}
+
 if (process.env.NODE_ENV === "production"){
-    libPath = "/media/OneDrive/"
+    storagePath = "/media/OneDrive/"
     jfUrl = "http://localhost:8096"
 
 } else {
-    jfUrl = "http://193.123.36.128"
+    jfUrl = "https://jellybeats.duckdns.org"
     if(process.platform === "linux")
-        libPath = "/mnt/c/Users/renau/OneDrive/Muziek/"
+        storagePath = "/mnt/c/Users/renau/OneDrive/Muziek/"
     else
-        libPath = "/Users/renau/OneDrive/Muziek/"
+        storagePath = "/Users/renau/OneDrive/Muziek/"
 }
-nextExecutions.push(setTimeout(executeAll, 30000))
+nextExecutions.push(setTimeout(executeAll, 3000))
 
-/* GET home page. */
 router.get('/', function(req, res) {
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
 });
@@ -46,12 +53,12 @@ router.post('/', function(req, res) {
     async function verwerk(){
 
         const IDs = []
-        const plS = []
-        for (const el of req.body){
-            IDs.push(el.ID)
-            plS.push(el.plS)
+        const entryNames = []
+        for (const POSTEntry of req.body){
+            IDs.push(POSTEntry.ID)
+            entryNames.push(POSTEntry.entryName)
         }
-        if((new Set(IDs)).size !== IDs.length || (new Set(plS).size !== plS.length))
+        if((new Set(IDs)).size !== IDs.length || (new Set(entryNames).size !== entryNames.length))  // check for duplicate id's or names
             return res.send("duplicates")
 
         res.send("k")
@@ -59,53 +66,48 @@ router.post('/', function(req, res) {
         let playlistsRef = playlistCollection.playlists
         let newPlaylists = []
 
-        for(const el of req.body){
+        for(const POSTEntry of req.body){
 
-            let playlistObj = playlistCollectionContainsName(el.plS)
+            let playlistObj = getPlaylistObject("ytId", POSTEntry.ID)
 
-            if(sameConfig(el)){
-                newPlaylists.push(playlistObj)
-                continue
-            }
-
-            if(el.nieuw){   // in nieuwe jf playlist
+            if(!playlistObj){   // if no playlist associated with that ytID -> create new playlist
 
                 let jfPlId = await axios.post(
                     jfUrl+"/Playlists?api_key="+process.env.JF_API_KEY, {
-                        Name: el.plS,
+                        Name: POSTEntry.entryName,
                         userId: process.env.JF_UID
                     }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
                 )
-                newPlaylists.push({"name":el.plS,"ytID":el.ID,"jfID":jfPlId.data.Id})
+                newPlaylists.push({"name":POSTEntry.entryName,"ytID":POSTEntry.ID,"jfID":jfPlId.data.Id})
 
-            } else {    // in bestaande jf playlist
-                if(playlistObj.name!==el.plS)   // als niet de zelfde naam (yt playlist ID is veranderd)
-                    await axios.post(
-                        jfUrl+"/Items/"+playlistObj.jfID+"?api_key="+process.env.JF_API_KEY, {
-                            "Name": el.plS,
-                            "Genres": [],
-                            "Tags": [],
-                            "ProviderIds": {}
-                        }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
-                    )
-                newPlaylists.push({"name":el.plS,"ytID":el.ID,"jfID":playlistObj.jfID})
+            } else {    // there already is a playlist with that ytId
+
+                // check if name changed
+                if( playlistObj.name === POSTEntry.entryName ){  // no changes to entry
+                    newPlaylists.push(playlistObj)
+                    continue
+                }
+
+                // name changed
+                await axios.post(
+                    jfUrl+"/Items/"+playlistObj.jfID+"?api_key="+process.env.JF_API_KEY, {
+                        "Name": POSTEntry.entryName,
+                        "Genres": [],
+                        "Tags": [],
+                        "ProviderIds": {}
+                    }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
+                )
+                newPlaylists.push({"name":POSTEntry.entryName,"ytID":POSTEntry.ID,"jfID":playlistObj.jfID})
 
             }
-
         }
 
         //delete unused jf playlists
-        for(const el of playlistsRef){
-            let match = false
-            for(const ell of newPlaylists)
-                if(el.jfID===ell.jfID)
-                    match=true
-            if(!match){
+        for(const playlistEntry of playlistsRef){
+            if(!newPlaylists.includes(playlistEntry.jfID))
                 await axios.delete(
-                    jfUrl+"/Items/"+el.jfID+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
+                    jfUrl+"/Items/"+playlistEntry.jfID+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
                 )
-            }
-
         }
 
         // sort alphabetically by name
@@ -133,7 +135,7 @@ async function executeAll(){
     console.log(getTimeStamp()+"----- Execution started -----")
 
     await getLibrary()
-    clearOldTmp()
+    await clearOldTmp()
     await getLinks()
     nextExecutions.push(setTimeout(executeAll, repeatInterval))
 
@@ -143,33 +145,39 @@ async function executeAll(){
 
 async function getLibrary() {
 
-    lib = await axios.get(
-        jfUrl+"/items?api_key="+process.env.JF_API_KEY+"&userId="+process.env.JF_UID+"&parentId="+process.env.JF_LIBID+"&Fields=Path", {
-            headers: { "Accept-Encoding": "gzip,deflate,compress" }
-        }
-    )
-    lib = lib.data.Items
+    jfLibrary = await axios.get(jfUrl+"/items?api_key="+process.env.JF_API_KEY+"&userId="+process.env.JF_UID+"&parentId="+process.env.JF_LIBID+"&Fields=Path", {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
+    jfLibrary = jfLibrary.data.Items
+
+    jfPlaylists = {};
+    for(let playlistEntry of playlistCollection.playlists) {
+        let jfPlaylist = await axios.get(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID + "&Fields=Path", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
+        jfPlaylists[playlistEntry.jfID] = jfPlaylist.data.Items
+    }
+
+    downloadedFiles = fs.readdirSync(storagePath).map(filename => path.parse(filename).name);
+
 }
 
 function clearOldTmp() {
 
-    for(const file of fs.readdirSync(path.join(__dirname, '../tmp/songs/')))
+    const tmpSongs = fs.readdirSync(path.join(__dirname, '../tmp/songs/'))
+    for(const file of tmpSongs)
         fs.unlinkSync(path.join(__dirname, '../tmp/songs/'+file))
 
-    for(const file of fs.readdirSync(path.join(__dirname, '../tmp/img/')))
+    const tmpImages = fs.readdirSync(path.join(__dirname, '../tmp/img/'))
+    for(const file of tmpImages)
         fs.unlinkSync(path.join(__dirname, '../tmp/img/'+file))
 }
 
 async function getLinks() {
 
     ytPlaylists = {};
-    const songs = new Set();
-    vpnQueue = new Set();
+    ytSongs = new Set();
     let APIcalls=0
 
-    for(let el of playlistCollection.playlists) {
-        let url = el.ytID
-        ytPlaylists[url] = new Set()
+    for(let playlistEntry of playlistCollection.playlists) {
+        let ytPlaylistId = playlistEntry.ytID
+        ytPlaylists[ytPlaylistId] = new Set()
         let response
         let pageToken = ""
 
@@ -177,7 +185,7 @@ async function getLinks() {
             try{
                 response = await axios({
                     method: "get",
-                    url: "https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50"+pageToken+"&playlistId="+url+"&key="+process.env.YT_API_KEY,
+                    url: "https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50"+pageToken+"&playlistId="+ytPlaylistId+"&key="+process.env.YT_API_KEY,
                 })
                 APIcalls++
                 if(APIcalls>9950)
@@ -190,132 +198,83 @@ async function getLinks() {
             pageToken = "&pageToken="+response.data.nextPageToken
 
 
-            for(let el2 of response.data.items){
-                songs.add(el2.snippet.resourceId.videoId)
-                ytPlaylists[url].add(el2.snippet.resourceId.videoId);
+            for(let song of response.data.items){
+                ytSongs.add(song.snippet.resourceId.videoId)
+                ytPlaylists[ytPlaylistId].add(song.snippet.resourceId.videoId);
             }
         }  while(response.data.nextPageToken !== undefined)
 
-        console.log(getTimeStamp()+"YouTube playlist \""+el.name+"\" contains "+ytPlaylists[url].size+" items")
+        console.log(getTimeStamp()+"YouTube playlist \""+playlistEntry.name+"\" contains "+ytPlaylists[ytPlaylistId].size+" items")
     }
 
     repeatInterval = Math.max( 60000, Math.ceil(86400000/(10000/(APIcalls*1.25)) ) ) //    ms in day / (10.000 api calls per day / (nr of api calls with margin)) with minimum of once every 1 minute
     if(repeatInterval>86400000) // if more than 8000 API calls, just do it once every day
         repeatInterval =86400000;
 
-    //checken als er liedjes in JF playlist zitten die niet in een yt playlist zitten
-    for(let el of playlistCollection.playlists) {
 
-        let jfPlaylist = await axios.get(
-            jfUrl+"/Playlists/"+el.jfID+"/Items?api_key="+process.env.JF_API_KEY+"&userId="+process.env.JF_UID+"&Fields=Path", {
-                headers: { "Accept-Encoding": "gzip,deflate,compress" }
-            }
-        )
-        jfPlaylists[el.jfID] = jfPlaylist.data.Items
+    // making sure playlists contain the correct songs
+    const toDownload = new Set();
+    for(let playlistEntry of playlistCollection.playlists) {
+        const jfPlaylist = jfPlaylists[playlistEntry.jfID]
+        const ytPlaylist = ytPlaylists[playlistEntry.ytID]
 
-        for(const value of Object.values(jfPlaylist.data.Items)) {
-            let ytId = jfToYtId(jfPlaylist.data.Items, value.Id)
-            if (!YTPlaylistContains(ytPlaylists[el.ytID], ytId)){  // remove from this playlist
-                await axios.delete(
-                    jfUrl + "/Playlists/" + el.jfID + "/Items?EntryIds=" + value.PlaylistItemId + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {
-                        headers: {"Accept-Encoding": "gzip,deflate,br"}
-                    }
-                )
-                console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+ytId+" removed from playlist "+el.name)
+
+        //check for songs in JF playlist who aren't in the corresponding YT playlist -> remove them from JF playlist
+        const onlyJfSet = new Set();
+        for (const songObj of jfPlaylist) { onlyJfSet.add(jfSongObjToYtId(songObj)); }    // add all jf songs to set
+        for (const ytId of ytPlaylist) { onlyJfSet.delete(ytId); }   // remove all yt id's from set
+
+        let toDelete = ""
+        for (const ytId of onlyJfSet) { toDelete += jfPlaylist.find(obj => jfSongObjToYtId(obj) === ytId).PlaylistItemId + ',' }
+        toDelete = toDelete.slice(0,-1)
+
+        if(onlyJfSet.size>0)
+            await axios.delete(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?EntryIds=" + toDelete + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {headers: {"Accept-Encoding": "gzip,deflate,br"}})
+
+
+        //check for songs in YT playlist who aren't in the corresponding JF playlist -> add them to JF playlist / put in toDownload set
+        const onlyYtSet = new Set();
+        for (const ytId of ytPlaylist) { onlyYtSet.add(ytId); }   // add all yt id's to set
+        for (const songObj of jfPlaylist) { onlyYtSet.delete( jfSongObjToYtId(songObj) ); }   // remove all jf songs from set
+
+        let toAdd = ""
+        for (const ytId of onlyYtSet) {
+            const foundObj = jfLibrary.find(obj => jfSongObjToYtId(obj) === ytId);
+            if (foundObj) // if its found in jfLibrary (if its not found, it still needs to be downloaded / JF didn't recognize it yet)
+                toAdd += foundObj.Id + ',';
+            else if (!downloadedFiles.includes(ytId)){
+                toDownload.add(ytId);
+                onlyYtSet.delete(ytId);
             }
+
         }
+        toAdd = toAdd.slice(0,-1)
+
+        if(onlyYtSet.size > 0)
+            await axios.post(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?Ids=" + toAdd + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
     }
 
-    for(const file of fs.readdirSync(libPath)) {
-        if (!YTPlaylistsContains(ytPlaylists, file.split(".")[0])) {    // song in jf library but not in single playlist (purging)
-            fs.unlinkSync(libPath + file);
-            console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+file.split(".")[0]+" deleted")
-        }
-    }
+    //check for songs in downloadedFiles who aren't in a single playlist -> remove songs from storage
+    const onlyInDownloadsSet = new Set(downloadedFiles);    // add all downloaded songs
+    for (const ytId of ytSongs) { onlyInDownloadsSet.delete(ytId); }   // remove all yt id's
+    for (const ytId of onlyInDownloadsSet) { fs.unlinkSync(storagePath + ytId + ".mp3") }
 
-    // download songs which are not in media folder
-    for(const ytId of songs){
-        if(!fs.existsSync('tmp/songs/'+ytId+".mp3") && !fs.existsSync(libPath+ytId+".mp3")){
-            while(currentAtSameTime >= maxAtSameTime){
-                await new Promise(r => setTimeout(r, randomIntFromInterval(5000, 10000))); // 10 seconden wachten voor opnieuw check
-            }
-            currentAtSameTime ++
-            console.log(getTimeStamp()+"Start download song https://music.youtube.com/watch?v="+ytId)
-            downloadSong(ytId)//, false)
-        }
+
+    // //check for songs in playlists who aren't downloaded -> download these songs
+    // for (const songId of ytSongs) { notInDownloadsSet.add(songId); }   // add all yt id's
+    // for (const songId of downloadedFiles) { notInDownloadsSet.delete(songId); }   // remove all downloaded yt id's
+    for (const ytId of toDownload) {
+        while(currentAtSameTime >= maxAtSameTime){ await new Promise(r => setTimeout(r, randomIntFromInterval(5000, 10000))); }  // 5-10 seconden wachten voor opnieuw check
+        currentAtSameTime ++
+        downloadSong(ytId)
     }
 
     while(currentAtSameTime !== 0){
         await new Promise(r => setTimeout(r, 5000)); // 5 seconden wachten voor opnieuw check, wachten tegen alles gedownload is
     }
-
-    // if(vpnQueue.size>0){
-    //
-    //     let vpnProcess
-    //     try{
-    //         console.log(getTimeStamp()+'Connecting to vpn')
-    //         vpnProcess = await connectVPN()
-    //         console.log(getTimeStamp()+'Vpn connected')
-    //     } catch (e) {
-    //         console.error(getTimeStamp()+"Failed to connect to VPN")
-    //     }
-    //
-    //     await cp.exec('curl ifconfig.me', async function(err, stdout) {
-    //         await console.log(getTimeStamp()+"vpn ip: "+stdout)
-    //     });
-    //
-    //     if(vpnProcess){
-    //         for(const ytId of vpnQueue){
-    //             if(!fs.existsSync('tmp/songs/'+ytId+".mp3") && !fs.existsSync(libPath+ytId+".mp3")){
-    //                 while(currentAtSameTime >= maxAtSameTime){
-    //                     await new Promise(r => setTimeout(r, randomIntFromInterval(5000, 10000))); // 10 seconden wachten voor opnieuw check
-    //                 }
-    //                 currentAtSameTime ++
-    //                 console.log(getTimeStamp()+"Start download song https://music.youtube.com/watch?v="+ytId+" with vpn")
-    //                 downloadSong(ytId, true)
-    //             }
-    //         }
-    //
-    //         while(currentAtSameTime !== 0){
-    //             await new Promise(r => setTimeout(r, 5000)); // 5 seconden wachten voor opnieuw check, wachten tegen alles me vpn gedownload is
-    //         }
-    //         vpnProcess.kill()
-    //         console.log(getTimeStamp()+'Vpn disconnected')
-    //     }
-    //
-    // }
-
-
-    // check for songs in jf library which are not in their playlists
-    for(const el of Object.keys(ytPlaylists)){
-        const playlistObject = playlistCollectionContainsYT(el)
-        const jfPlID = playlistObject.jfID
-        const ytPlaylist = ytPlaylists[el]
-        const jfPlaylist = jfPlaylists[jfPlID]
-
-        if(ytPlaylist.length !== jfPlaylist.length)
-            for(const el of ytPlaylist){
-                const jfId = ytToJfId(lib, el)
-                if(jfId)
-                    if(!jfLibraryContains(jfPlaylist, jfId)){
-                        await axios.post(
-                            jfUrl + "/Playlists/" + jfPlID + "/Items?Ids=" + jfId + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {
-                                headers: {"Accept-Encoding": "gzip,deflate,compress"}
-                            }
-                        )
-                        console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+el+" added to playlist "+playlistObject.name)
-                    }
-            }
-    }
 }
 
-async function downloadSong(id){//, vpn){
-
-    let logging=""
-    // if(vpn)
-    //     logging = "with vpn "
-    // else
-    //     logging = "without vpn"
+async function downloadSong(id){
 
     let metadata
 
@@ -329,7 +288,6 @@ async function downloadSong(id){//, vpn){
                 'referer:youtube.com',
                 'user-agent:googlebot'
             ],
-            //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
         })
 
         await youtubedl("https://music.youtube.com/watch?v="+id, {
@@ -342,18 +300,11 @@ async function downloadSong(id){//, vpn){
             ],
             output:"tmp/songs/"+id+"X.mp3",
             format: "bestaudio",
-            //proxy: 'https://renaut.mestdagh%40gmail.com:q8Cz%267jEm5%23yuz7L@be.lazerpenguin.com:443'
-        }).then(function(){
-            if(!fs.existsSync('tmp/songs/'+id+"X.mp3")){
-                console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
-                return currentAtSameTime--
-            }
-            process()
-        })
+        }).then( process() )
 
     } catch (e) {
         // console.error(e)
-        console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging)
+        console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download")
         //if(!vpn)
           //  vpnQueue.add(id)
         return currentAtSameTime --
@@ -388,7 +339,6 @@ async function downloadSong(id){//, vpn){
             }
         }
 
-
         //'ffmpeg -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 ' +
         //             ' -metadata title="' + metadata.track +
         //             '" -metadata artist="' + metadata.artist +
@@ -411,14 +361,14 @@ async function downloadSong(id){//, vpn){
         try{
             execSync(toExecute, {encoding: 'utf-8'});
         } catch(e) {
-            console.error(e)
+            console.error(getTimeStamp()+"Setting metadata failed")
             return currentAtSameTime--
         }
 
         fs.unlinkSync('tmp/songs/' + metadata.id + 'X.mp3')
 
         execSync('ffmpeg -hide_banner -loglevel error -i tmp/songs/' + id + ".mp3"+' -i tmp/img/' + id + ".jpg -map 0:0 -map 1:0 -c copy -id3v2_version 3 " +
-            "-metadata:s:v title=\"Album cover\" -metadata:s:v comment=\"Cover (front)\" "+libPath + id + ".mp3", { encoding: 'utf-8' });  // the default is 'buffer'
+            "-metadata:s:v title=\"Album cover\" -metadata:s:v comment=\"Cover (front)\" "+storagePath + id + ".mp3", { encoding: 'utf-8' });  // the default is 'buffer'
 
         fs.unlinkSync('tmp/songs/' + metadata.id + '.mp3')
         fs.unlinkSync('tmp/img/' + metadata.id + '.jpg')
@@ -428,87 +378,12 @@ async function downloadSong(id){//, vpn){
     }
 }
 
-// async function connectVPN(){
-//
-//     const vpnProcess = spawn('/bin/sh', ['./vpn/connect.sh'], { shell: true });
-//
-//     let prev
-//     let currIp
-//
-//     await cp.exec('curl ifconfig.me', function(err, stdout) {
-//         prev=stdout
-//         currIp=stdout
-//     });
-//
-//     let tryNr=0
-//     while(prev===currIp){    // wachten tegen da vpn verbonden is
-//         await new Promise(r => setTimeout(r, 5000));
-//         await cp.exec('curl ifconfig.me', function(err, stdout) {
-//             currIp=stdout
-//         });
-//         tryNr++
-//         if(tryNr>5)
-//             throw new Error('Unable to connect to vpn');
-//
-//     }
-//     return vpnProcess
-// }
-
-function sameConfig(ell){
-    for(const el of Object.values(playlistCollection.playlists))
-        if(el.name === ell.plS && el.ytID === ell.ID)
-            return true;
-    return false
-}
-function YTPlaylistContains(playlist, ytId) {
-    for(const el of playlist.values())
-        if(ytId === el)
-            return true
-    return false;
-}
-function YTPlaylistsContains(playlists, ytId) {
-    for(const ell of Object.values(playlists))
-        for(const el of ell.values())
-            if(ytId === el)
-                return true
-    return false;
-}
-function jfLibraryContains(library, jfId){
-    for(const value of Object.values(library))
-        if(value.Id === jfId)
-            return true
-    return false
+function jfSongObjToYtId(songObj) {
+    return songObj.Path.split("/")[3].split(".")[0];
 }
 
-function ytToJfId(library, ytId) {
-    //console.log(playlist.data.Items)
-    for(const value of Object.values(library))
-        if(value.Path === "/media/OneDrive/"+ytId+".mp3")
-            return value.Id
-    //console.log("conversion failed")
-    //console.log(info)
-    return null
-}
-
-function jfToYtId(library, jfId) {
-    for(const value of Object.values(library))
-        if(value.Id === jfId)
-            return value.Path.split("/")[3].split(".")[0]
-}
-
-function playlistCollectionContainsYT(ytPlId){
-    for(const el of Object.values(playlistCollection.playlists)){
-        if (el.ytID === ytPlId)
-            return el
-    }
-    return false
-}
-function playlistCollectionContainsName(plName){
-    for(const el of Object.values(playlistCollection.playlists)){
-        if (el.name === plName)
-            return el
-    }
-    return false
+function getPlaylistObject(attribute, value){
+    return playlistCollection.playlists.find(obj => obj[attribute] === value)
 }
 
 function randomIntFromInterval(min, max) { // min and max included
