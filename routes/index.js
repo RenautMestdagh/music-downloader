@@ -359,7 +359,7 @@ async function downloadSong(id){
         toExecute += '" tmp/songs/' + id + ".mp3"
 
         try{
-            console.log(execSync('ls', {encoding: 'utf-8'}));
+            console.log(execSync('ls tmp/songs', {encoding: 'utf-8'}));
             return
         } catch(e) {
             console.error(getTimeStamp()+"Setting metadata failed")
