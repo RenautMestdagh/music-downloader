@@ -301,11 +301,13 @@ async function downloadSong(id){
             output:"tmp/songs/"+id+"X.mp3",
             format: "bestaudio",
         }).then(function(){
-                if(false){
-                    // console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
-                    // return currentAtSameTime--
-                }
+            if(true)
                 process()
+                // if(false){
+                //     // console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
+                //     // return currentAtSameTime--
+                // }
+                // process()
             })
 
     } catch (e) {
