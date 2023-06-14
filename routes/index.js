@@ -217,6 +217,7 @@ async function getLinks() {
     for(let playlistEntry of playlistCollection.playlists) {
         const jfPlaylist = jfPlaylists[playlistEntry.jfID]
         const ytPlaylist = ytPlaylists[playlistEntry.ytID]
+        const maxRequestSize = 7800; // Maximum request size in bytes
 
 
         //check for songs in JF playlist who aren't in the corresponding YT playlist -> remove them from JF playlist
@@ -225,11 +226,21 @@ async function getLinks() {
         for (const ytId of ytPlaylist) { onlyJfSet.delete(ytId); }   // remove all yt id's from set
 
         let toDelete = ""
-        for (const ytId of onlyJfSet) { toDelete += jfPlaylist.find(obj => jfSongObjToYtId(obj) === ytId).PlaylistItemId + ',' }
-        toDelete = toDelete.slice(0,-1)
+        let requests = [];
+        for (const ytId of onlyJfSet) {
+            toDelete += jfPlaylist.find(obj => jfSongObjToYtId(obj) === ytId).PlaylistItemId + ','
 
-        if(onlyJfSet.size>0)
-            await axios.delete(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?EntryIds=" + toDelete + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {headers: {"Accept-Encoding": "gzip,deflate,br"}})
+            if (toDelete.length >= maxRequestSize) {    // Request size exceeded, create a new request
+                requests.push(toDelete.slice(0, -1)); // Add the current toDelete to requests
+                toDelete = ""; // Reset toDelete for the next request
+            }
+        }
+        if (toDelete.length > 0)
+            requests.push(toDelete.slice(0, -1)); // Add the remaining toDelete to requests
+
+        for (const request of requests)
+            await axios.delete(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?EntryIds=" + request + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, { headers: { "Accept-Encoding": "gzip,deflate,br" } });
+
 
 
         //check for songs in YT playlist who aren't in the corresponding JF playlist -> add them to JF playlist / put in toDownload set
@@ -238,6 +249,7 @@ async function getLinks() {
         for (const songObj of jfPlaylist) { onlyYtSet.delete( jfSongObjToYtId(songObj) ); }   // remove all jf songs from set
 
         let toAdd = ""
+        requests = [];
         for (const ytId of onlyYtSet) {
             const foundObj = jfLibrary.find(obj => jfSongObjToYtId(obj) === ytId);
             if (foundObj) // if its found in jfLibrary (if its not found, it still needs to be downloaded / JF didn't recognize it yet)
@@ -247,11 +259,17 @@ async function getLinks() {
                 onlyYtSet.delete(ytId);
             }
 
+            if (toAdd.length >= maxRequestSize) {   // Request size exceeded, create a new request
+                requests.push(toAdd.slice(0, -1)); // Add the current toAdd to requests
+                toAdd = ""; // Reset toAdd for the next request
+            }
         }
-        toAdd = toAdd.slice(0,-1)
+        if (toAdd.length > 0)
+            requests.push(toAdd.slice(0, -1)); // Add the remaining toAdd to requests
 
-        if(onlyYtSet.size > 0)
-            await axios.post(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?Ids=" + toAdd + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
+        for (const request of requests)
+            await axios.post(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?Ids=" + request + "&api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID, { headers: { "Accept-Encoding": "gzip,deflate,compress" } });
+
     }
 
     //check for songs in downloadedFiles who aren't in a single playlist -> remove songs from storage
