@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === "production"){
     else
         storagePath = "/Users/renau/OneDrive/Muziek/"
 }
-nextExecutions.push(setTimeout(executeAll, 3000))
+nextExecutions.push(setTimeout(executeAll, 30000))
 
 router.get('/', function(req, res) {
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
