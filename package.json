@@ -7,21 +7,17 @@
     "devstart": "NODE_ENV=development node ./bin/www"
   },
   "dependencies": {
-    "axios": "^1.2.1",
-    "cookie-parser": "~1.4.4",
+    "axios": "^1.4.0",
+    "cookie-parser": "^1.4.6",
     "cookie-session": "^2.0.0",
-    "debug": "~4.3.4",
-    "dotenv": "^16.0.3",
-    "express": "~4.16.1",
-    "ffmetadata": "^1.7.0",
-    "http-errors": "~1.6.3",
-    "morgan": "~1.9.1",
-    "node-openvpn": "^0.1.1",
-    "nvm": "^0.0.4",
-    "openvpn-client": "^0.0.2",
-    "pug": "2.0.0-beta11",
-    "sharp": "^0.31.3",
-    "youtube-dl-exec": "^2.1.10"
+    "debug": "4.3.4",
+    "dotenv": "^16.1.4",
+    "express": "^4.18.2",
+    "http-errors": "^2.0.0",
+    "morgan": "^1.10.0",
+    "pug": "^3.0.2",
+    "sharp": "^0.32.1",
+    "youtube-dl-exec": "^2.4.5"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"

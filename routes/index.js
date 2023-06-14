@@ -278,7 +278,6 @@ async function downloadSong(id){
 
     let metadata
 
-    let test=0
     try{
         metadata = await youtubedl("https://music.youtube.com/watch?v="+id, {
             dumpSingleJson: true,
@@ -290,7 +289,6 @@ async function downloadSong(id){
                 'user-agent:googlebot'
             ],
         })
-        test++
 
         await youtubedl("https://music.youtube.com/watch?v="+id, {
             noCheckCertificates: true,
@@ -302,20 +300,9 @@ async function downloadSong(id){
             ],
             output:"tmp/songs/"+id+"X.mp3",
             format: "bestaudio",
-        })//.then(async function(){
-        //     if(true)
-        //         await process()
-        //         // if(false){
-        //         //     // console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download "+logging+"but WEIRD")
-        //         //     // return currentAtSameTime--
-        //         // }
-        //         // process()
-        //     })
-        test++
+        })
 
     } catch (e) {
-        // console.error(e)
-        console.error(getTimeStamp()+test)
         console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download")
         return currentAtSameTime --
     }
