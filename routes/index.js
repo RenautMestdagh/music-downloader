@@ -19,7 +19,7 @@ let repeatInterval =  15*60*1000 // 15 minuten
 const maxAtSameTime = 10
 let currentAtSameTime = 0
 
-let playlistCollection = require('../playlists.json');
+let playlistCollection = require('../playlists.json').playlists;
 
 let storagePath
 let jfUrl
@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === "production"){
     else
         storagePath = "/Users/renau/OneDrive/Muziek/"
 }
-nextExecutions.push(setTimeout(executeAll, 30000))
+nextExecutions.push(setTimeout(executeAll, 120000))
 
 router.get('/', function(req, res) {
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
@@ -63,12 +63,12 @@ router.post('/', function(req, res) {
 
         res.send("k")
 
-        let playlistsRef = playlistCollection.playlists
+        let playlistsRef = playlistCollection
         let newPlaylists = []
 
         for(const POSTEntry of req.body){
 
-            let playlistObj = getPlaylistObject("ytId", POSTEntry.ID)
+            let playlistObj = getPlaylistObject("ytID", POSTEntry.ID)
 
             if(!playlistObj){   // if no playlist associated with that ytID -> create new playlist
 
@@ -102,9 +102,9 @@ router.post('/', function(req, res) {
             }
         }
 
-        //delete unused jf playlists
+        // delete unused jf playlists
         for(const playlistEntry of playlistsRef){
-            if(!newPlaylists.includes(playlistEntry.jfID))
+            if(!newPlaylists.find(obj => obj.jfID === playlistEntry.jfID))
                 await axios.delete(
                     jfUrl+"/Items/"+playlistEntry.jfID+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
                 )
@@ -119,17 +119,19 @@ router.post('/', function(req, res) {
         });
 
         fs.writeFileSync(path.join(__dirname, '../playlists.json'), "{\"playlists\":"+JSON.stringify(newPlaylists)+"}");
-        playlistCollection = {playlists:newPlaylists}
+        playlistCollection = newPlaylists
 
         if(nextExecutions.length > 0)
-            nextExecutions.push(setTimeout(executeAll, 0))
+            return nextExecutions.push(setTimeout(executeAll, 50))  // its not running so run immediately
+        else
+            return nextExecutions.push("do again")  // its running -> give signal to run it again after execution
     }
     verwerk()
 });
 
 async function executeAll(){
-    for (const el of nextExecutions)
-        clearTimeout(el);
+    for (const plannedExecution of nextExecutions)
+        clearTimeout(plannedExecution);
     nextExecutions.length = 0;
 
     console.log(getTimeStamp()+"----- Execution started -----")
@@ -137,6 +139,10 @@ async function executeAll(){
     await getLibrary()
     await clearOldTmp()
     await getLinks()
+
+    if(nextExecutions.length>0) // if a post happened while executing
+        return nextExecutions.push(setTimeout(executeAll, 50))
+
     nextExecutions.push(setTimeout(executeAll, repeatInterval))
 
     console.log(getTimeStamp()+"----- Execution complete -----")
@@ -149,7 +155,7 @@ async function getLibrary() {
     jfLibrary = jfLibrary.data.Items
 
     jfPlaylists = {};
-    for(let playlistEntry of playlistCollection.playlists) {
+    for(let playlistEntry of playlistCollection) {
         let jfPlaylist = await axios.get(jfUrl + "/Playlists/" + playlistEntry.jfID + "/Items?api_key=" + process.env.JF_API_KEY + "&userId=" + process.env.JF_UID + "&Fields=Path", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
         jfPlaylists[playlistEntry.jfID] = jfPlaylist.data.Items
     }
@@ -175,7 +181,7 @@ async function getLinks() {
     ytSongs = new Set();
     let APIcalls=0
 
-    for(let playlistEntry of playlistCollection.playlists) {
+    for(let playlistEntry of playlistCollection) {
         let ytPlaylistId = playlistEntry.ytID
         ytPlaylists[ytPlaylistId] = new Set()
         let response
@@ -214,13 +220,13 @@ async function getLinks() {
 
     // making sure playlists contain the correct songs
     const toDownload = new Set();
-    for(let playlistEntry of playlistCollection.playlists) {
+    for(let playlistEntry of playlistCollection) {
         const jfPlaylist = jfPlaylists[playlistEntry.jfID]
         const ytPlaylist = ytPlaylists[playlistEntry.ytID]
         const maxRequestSize = 7800; // Maximum request size in bytes
 
 
-        //check for songs in JF playlist who aren't in the corresponding YT playlist -> remove them from JF playlist
+        // check for songs in JF playlist who aren't in the corresponding YT playlist -> remove them from JF playlist
         const onlyJfSet = new Set();
         for (const songObj of jfPlaylist) { onlyJfSet.add(jfSongObjToYtId(songObj)); }    // add all jf songs to set
         for (const ytId of ytPlaylist) { onlyJfSet.delete(ytId); }   // remove all yt id's from set
@@ -243,7 +249,7 @@ async function getLinks() {
 
 
 
-        //check for songs in YT playlist who aren't in the corresponding JF playlist -> add them to JF playlist / put in toDownload set
+        // check for songs in YT playlist who aren't in the corresponding JF playlist -> add them to JF playlist / put in toDownload set
         const onlyYtSet = new Set();
         for (const ytId of ytPlaylist) { onlyYtSet.add(ytId); }   // add all yt id's to set
         for (const songObj of jfPlaylist) { onlyYtSet.delete( jfSongObjToYtId(songObj) ); }   // remove all jf songs from set
@@ -252,9 +258,9 @@ async function getLinks() {
         requests = [];
         for (const ytId of onlyYtSet) {
             const foundObj = jfLibrary.find(obj => jfSongObjToYtId(obj) === ytId);
-            if (foundObj) // if its found in jfLibrary (if its not found, it still needs to be downloaded / JF didn't recognize it yet)
+            if (foundObj) // if its found in jfLibrary -> add to the playlist
                 toAdd += foundObj.Id + ',';
-            else if (!downloadedFiles.includes(ytId)){
+            else if (!downloadedFiles.includes(ytId)){  // if its not found, it still needs to be downloaded / JF didn't recognize it yet
                 toDownload.add(ytId);
                 onlyYtSet.delete(ytId);
             }
@@ -272,15 +278,13 @@ async function getLinks() {
 
     }
 
-    //check for songs in downloadedFiles who aren't in a single playlist -> remove songs from storage
+    // check for songs in downloadedFiles who aren't in a single playlist -> remove songs from storage
     const onlyInDownloadsSet = new Set(downloadedFiles);    // add all downloaded songs
     for (const ytId of ytSongs) { onlyInDownloadsSet.delete(ytId); }   // remove all yt id's
     for (const ytId of onlyInDownloadsSet) { fs.unlinkSync(storagePath + ytId + ".mp3") }
 
 
-    // //check for songs in playlists who aren't downloaded -> download these songs
-    // for (const songId of ytSongs) { notInDownloadsSet.add(songId); }   // add all yt id's
-    // for (const songId of downloadedFiles) { notInDownloadsSet.delete(songId); }   // remove all downloaded yt id's
+    // download new songs
     for (const ytId of toDownload) {
         while(currentAtSameTime >= maxAtSameTime){ await new Promise(r => setTimeout(r, randomIntFromInterval(5000, 10000))); }  // 5-10 seconden wachten voor opnieuw check
         currentAtSameTime ++
@@ -395,7 +399,7 @@ function jfSongObjToYtId(songObj) {
 }
 
 function getPlaylistObject(attribute, value){
-    return playlistCollection.playlists.find(obj => obj[attribute] === value)
+    return playlistCollection.find(obj => obj[attribute] === value)
 }
 
 function randomIntFromInterval(min, max) { // min and max included

@@ -1,4 +1,4 @@
-let data = JSON.parse(document.getElementsByTagName("data")[0].innerText).playlists;
+let data = JSON.parse(document.getElementsByTagName("data")[0].innerText);
 data.push({});
 let last=false
 
