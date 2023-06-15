@@ -281,7 +281,7 @@ async function getLinks() {
     // check for songs in downloadedFiles who aren't in a single playlist -> remove songs from storage
     const onlyInDownloadsSet = new Set(downloadedFiles);    // add all downloaded songs
     for (const ytId of ytSongs) { onlyInDownloadsSet.delete(ytId); }   // remove all yt id's
-    for (const ytId of onlyInDownloadsSet) { fs.unlinkSync(storagePath + ytId + ".mp3") }
+    //for (const ytId of onlyInDownloadsSet) { fs.unlinkSync(storagePath + ytId + ".mp3") }
 
 
     // download new songs
