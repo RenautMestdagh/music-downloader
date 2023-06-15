@@ -260,10 +260,8 @@ async function getLinks() {
             const foundObj = jfLibrary.find(obj => jfSongObjToYtId(obj) === ytId);
             if (foundObj) // if its found in jfLibrary -> add to the playlist
                 toAdd += foundObj.Id + ',';
-            else if (!downloadedFiles.includes(ytId)){  // if its not found, it still needs to be downloaded / JF didn't recognize it yet
+            else if (!downloadedFiles.includes(ytId))  // if its not found, it still needs to be downloaded / JF didn't recognize it yet
                 toDownload.add(ytId);
-                onlyYtSet.delete(ytId);
-            }
 
             if (toAdd.length >= maxRequestSize) {   // Request size exceeded, create a new request
                 requests.push(toAdd.slice(0, -1)); // Add the current toAdd to requests
