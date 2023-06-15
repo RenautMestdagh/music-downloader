@@ -16,7 +16,6 @@
     "http-errors": "^2.0.0",
     "morgan": "^1.10.0",
     "pug": "^3.0.2",
-    "serve-favicon": "^2.5.0",
     "sharp": "^0.32.1",
     "youtube-dl-exec": "^2.4.5"
   },
