@@ -34,7 +34,7 @@ async function initializePlaylists() {
     //get all current playlists
     let jfPlaylists = await axios.get(jfUrl + "/Users/" + process.env.JF_UID + "/Items?api_key=" + process.env.JF_API_KEY + "&ParentId=" + process.env.JF_LIBID + "&IncludeItemTypes=Playlist&Recursive=true", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
     // delete all current playlists
-    for(let playlistEntry of jfPlaylists.Items)
+    for(let playlistEntry of jfPlaylists.data.Items)
         await axios.delete(jfUrl+"/Items/"+playlistEntry.Id+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
 
     let playlists = []
