@@ -19,7 +19,7 @@ let repeatInterval =  15*60*1000 // 15 minuten
 const maxAtSameTime = 10
 let currentAtSameTime = 0
 
-let playlistCollection = require('../playlists.json').playlists;
+let playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists;
 
 let storagePath
 let jfUrl
@@ -43,9 +43,13 @@ if (process.env.NODE_ENV === "production"){
     else
         storagePath = "/Users/renau/OneDrive/Muziek/"
 }
-//nextExecutions.push(setTimeout(executeAll, 120000))
+nextExecutions.push(setTimeout(executeAll, 120000))
 
 router.get('/', function(req, res) {
+
+    if(playlistCollection.length === 0)
+        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists
+
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
 });
 
@@ -133,6 +137,9 @@ async function executeAll(){
     nextExecutions.length = 0;
 
     console.log(getTimeStamp()+"----- Execution started -----")
+
+    if(playlistCollection.length === 0)
+        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists
 
     await getLibrary()
     await clearOldTmp()

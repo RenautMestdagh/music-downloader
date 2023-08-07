@@ -32,10 +32,10 @@ app.use(
 async function initializePlaylists() {
 
     //get all current playlists
-    let jfPlaylists = await axios.get(jfUrl + "/Users/" + process.env.JF_UID + "/Items?api_key=" + process.env.JF_API_KEY + "&ParentId=" + process.env.JF_LIBID + "&IncludeItemTypes=Playlist&Recursive=true", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
+    let jfPlaylists = await axios.get("http://localhost:8096/Users/" + process.env.JF_UID + "/Items?api_key=" + process.env.JF_API_KEY + "&ParentId=" + process.env.JF_LIBID + "&IncludeItemTypes=Playlist&Recursive=true", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
     // delete all current playlists
-    for(let playlistEntry of jfPlaylists.Items)
-        await axios.delete(jfUrl+"/Items/"+playlistEntry.Id+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
+    for(let playlistEntry of jfPlaylists.data.Items)
+        await axios.delete("http://localhost:8096/Items/"+playlistEntry.Id+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
 
     let playlists = []
     let playlistInit = require('./initConfig.json').playlists;
@@ -43,7 +43,7 @@ async function initializePlaylists() {
     // create playlists
     for(let playlistEntry of playlistInit){
         let jfPlId = await axios.post(
-            jfUrl+"/Playlists?api_key="+process.env.JF_API_KEY, {
+            "http://localhost:8096/Playlists?api_key="+process.env.JF_API_KEY, {
                 Name: playlistEntry.name,
                 userId: process.env.JF_UID
             }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
