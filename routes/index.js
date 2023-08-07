@@ -393,7 +393,7 @@ async function downloadSong(id){
 }
 
 function jfSongObjToYtId(songObj) {
-    return songObj.Path.split("/").slice(-1).split(".")[0];
+    return songObj.Path.split("/").slice(-1)[0].split(".")[0];
 }
 
 function getPlaylistObject(attribute, value){
