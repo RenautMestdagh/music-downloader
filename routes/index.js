@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === "production"){
     else
         storagePath = "/Users/renau/OneDrive/Muziek/"
 }
-nextExecutions.push(setTimeout(executeAll, 120000))
+//nextExecutions.push(setTimeout(executeAll, 120000))
 
 router.get('/', function(req, res) {
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
@@ -105,9 +105,7 @@ router.post('/', function(req, res) {
         // delete unused jf playlists
         for(const playlistEntry of playlistsRef){
             if(!newPlaylists.find(obj => obj.jfID === playlistEntry.jfID))
-                await axios.delete(
-                    jfUrl+"/Items/"+playlistEntry.jfID+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
-                )
+                await axios.delete(jfUrl+"/Items/"+playlistEntry.jfID+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
         }
 
         // sort alphabetically by name
