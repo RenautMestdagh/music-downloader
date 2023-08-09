@@ -33,7 +33,7 @@ let jfUrl
 // ytPlaylists = {ytPlaylistId: Set(songId, songId, ...), ytPlaylistId: Set(songId, songId, ...), ...}
 
 if (process.env.NODE_ENV === "production"){
-    storagePath = "/media/OneDrive/"
+    storagePath = "/mnt/seafile/"
     jfUrl = "http://localhost:8096"
 
 } else {
