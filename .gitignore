@@ -2,4 +2,4 @@ ffmpeg.exe
 node_modules
 .idea
 playlists.json
-tmp/
+/tmp/
