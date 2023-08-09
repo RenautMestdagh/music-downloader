@@ -37,11 +37,11 @@ if (process.env.NODE_ENV === "production"){
     jfUrl = "http://localhost:8096"
 
 } else {
-    jfUrl = "https://jellybeats.duckdns.org"
+    jfUrl = "https://jellyfin.rennet.duckdns.org"
     if(process.platform === "linux")
-        storagePath = "/mnt/c/Users/renau/OneDrive/Muziek/"
+        storagePath = "/mnt/c/Users/renau/seadrive_root/renaut.m/My Libraries/Muziek/"
     else
-        storagePath = "/Users/renau/OneDrive/Muziek/"
+        storagePath = "/Users/renau/seadrive_root/renaut.m/My Libraries/Muziek/"
 }
 nextExecutions.push(setTimeout(executeAll, 120000))
 
