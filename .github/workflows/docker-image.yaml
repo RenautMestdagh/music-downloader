@@ -69,4 +69,4 @@ jobs:
             context: ./
             file: ./Dockerfile
             push: true
-            tags: ${{ secrets.DOCKERHUB_USERNAME }}/musicServer:latest
+            tags: ${{ secrets.DOCKERHUB_USERNAME }}/musicserver:latest
