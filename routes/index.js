@@ -19,7 +19,7 @@ let repeatInterval =  15*60*1000 // 15 minuten
 const maxAtSameTime = 10
 let currentAtSameTime = 0
 
-let playlistCollection;
+let playlistCollection = [];
 
 let storagePath
 let jfUrl
@@ -43,12 +43,44 @@ if (process.env.NODE_ENV === "production"){
     else
         storagePath = "/Users/renau/seadrive_root/renaut.m/My Libraries/Muziek/"
 }
+
+async function initializePlaylists() {
+
+    //get all current playlists
+    let jfPlaylists = await axios.get(jfUrl+"/Users/" + process.env.JF_UID + "/Items?api_key=" + process.env.JF_API_KEY + "&ParentId=" + process.env.JF_LIBID + "&IncludeItemTypes=Playlist&Recursive=true", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
+    // delete all current playlists
+    for(let playlistEntry of jfPlaylists.data.Items)
+        await axios.delete(jfUrl+"/Items/"+playlistEntry.Id+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
+
+    playlistCollection = []
+    let playlistInit = require('../initConfig.json').playlists;
+
+    // create playlists
+    for(let playlistEntry of playlistInit){
+        let jfPlId = await axios.post(
+            jfUrl+"/Playlists?api_key="+process.env.JF_API_KEY, {
+                Name: playlistEntry.name,
+                userId: process.env.JF_UID
+            }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
+        )
+        playlistCollection.push({"name":playlistEntry.name,"ytID":playlistEntry.ytID,"jfID":jfPlId.data.Id})
+    }
+
+    // sort alphabetically by name
+    playlistCollection.sort( function( a, b ) {
+        a = a.name.toLowerCase();
+        b = b.name.toLowerCase();
+
+        return a < b ? -1 : a > b ? 1 : 0;
+    });
+
+    fs.writeFileSync(path.join(__dirname, './playlists.json'), playlistCollection.toString());
+}
+
+initializePlaylists();
 nextExecutions.push(setTimeout(executeAll, 120000))
 
 router.get('/', function(req, res) {
-
-    if(playlistCollection.length === 0)
-        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists
 
     res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
 });
@@ -120,7 +152,7 @@ router.post('/', function(req, res) {
             return a < b ? -1 : a > b ? 1 : 0;
         });
 
-        fs.writeFileSync(path.join(__dirname, '../playlists.json'), "{\"playlists\":"+JSON.stringify(newPlaylists)+"}");
+        fs.writeFileSync(path.join(__dirname, '../playlists.json'), newPlaylists.toString());
         playlistCollection = newPlaylists
 
         if(nextExecutions.length > 0)
@@ -132,17 +164,12 @@ router.post('/', function(req, res) {
 });
 
 async function executeAll(){
-    if(playlistCollection==null)
-        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists;
 
     for (const plannedExecution of nextExecutions)
         clearTimeout(plannedExecution);
     nextExecutions.length = 0;
 
     console.log(getTimeStamp()+"----- Execution started -----")
-
-    if(playlistCollection.length === 0)
-        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists
 
     await getLibrary()
     await clearOldTmp()

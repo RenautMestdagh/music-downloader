@@ -4,8 +4,6 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const session = require('cookie-session');
 const logger = require('morgan');
-const axios = require("axios");
-const fs = require("fs");
 require('dotenv').config()
 const router = express.Router();
 
@@ -28,42 +26,6 @@ app.use(
         secret: 'y&yR2q43rYz##4Z5',
     })
 )
-
-async function initializePlaylists() {
-
-    //get all current playlists
-    let jfPlaylists = await axios.get("http://localhost:8096/Users/" + process.env.JF_UID + "/Items?api_key=" + process.env.JF_API_KEY + "&ParentId=" + process.env.JF_LIBID + "&IncludeItemTypes=Playlist&Recursive=true", {headers: {"Accept-Encoding": "gzip,deflate,compress"}})
-    // delete all current playlists
-    for(let playlistEntry of jfPlaylists.data.Items)
-        await axios.delete("http://localhost:8096/Items/"+playlistEntry.Id+"?api_key="+process.env.JF_API_KEY, {headers: { "Accept-Encoding": "gzip,deflate,compress" }})
-
-    let playlists = []
-    let playlistInit = require('./initConfig.json').playlists;
-
-    // create playlists
-    for(let playlistEntry of playlistInit){
-        let jfPlId = await axios.post(
-            "http://localhost:8096/Playlists?api_key="+process.env.JF_API_KEY, {
-                Name: playlistEntry.name,
-                userId: process.env.JF_UID
-            }, {headers: { "Accept-Encoding": "gzip,deflate,compress" }},
-        )
-        playlists.push({"name":playlistEntry.name,"ytID":playlistEntry.ytID,"jfID":jfPlId.data.Id})
-    }
-
-    // sort alphabetically by name
-    playlists.sort( function( a, b ) {
-        a = a.name.toLowerCase();
-        b = b.name.toLowerCase();
-
-        return a < b ? -1 : a > b ? 1 : 0;
-    });
-
-    fs.writeFileSync(path.join(__dirname, './playlists.json'), "{\"playlists\":"+JSON.stringify(playlists)+"}");
-
-}
-
-initializePlaylists();
 
 const redirectLogin = (req, res, next) => {
     if (!req.session.userId && req.url!=="/login") {
