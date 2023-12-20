@@ -19,7 +19,7 @@ let repeatInterval =  15*60*1000 // 15 minuten
 const maxAtSameTime = 10
 let currentAtSameTime = 0
 
-let playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists;
+let playlistCollection;
 
 let storagePath
 let jfUrl
@@ -132,6 +132,9 @@ router.post('/', function(req, res) {
 });
 
 async function executeAll(){
+    if(playlistCollection==null)
+        playlistCollection = JSON.parse(fs.readFileSync(path.join(__dirname, '../playlists.json'))).playlists;
+
     for (const plannedExecution of nextExecutions)
         clearTimeout(plannedExecution);
     nextExecutions.length = 0;
