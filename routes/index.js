@@ -73,8 +73,6 @@ async function initializePlaylists() {
 
         return a < b ? -1 : a > b ? 1 : 0;
     });
-
-    fs.writeFileSync(path.join(__dirname, './playlists.json'), playlistCollection.toString());
 }
 
 initializePlaylists();
@@ -152,7 +150,6 @@ router.post('/', function(req, res) {
             return a < b ? -1 : a > b ? 1 : 0;
         });
 
-        fs.writeFileSync(path.join(__dirname, '../playlists.json'), newPlaylists.toString());
         playlistCollection = newPlaylists
 
         if(nextExecutions.length > 0)
