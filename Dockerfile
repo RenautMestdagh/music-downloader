@@ -1,4 +1,4 @@
-FROM node:20.10.0
+FROM --platform=linux/arm64 node:20.10.0
 RUN apt-get update
 RUN apt-get install python3 -y
 RUN apt-get install ffmpeg -y
