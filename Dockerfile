@@ -1,4 +1,4 @@
-FROM node:20.10.0-alpine3.18
+FROM node:lts-bookworm-slim
 RUN apt-get update
 RUN apt-get install python3 -y
 RUN apt-get install ffmpeg -y
