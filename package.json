@@ -16,7 +16,7 @@
     "http-errors": "^2.0.0",
     "morgan": "^1.10.0",
     "pug": "^3.0.2",
-    "sharp": "^0.33.1",
+    "sharp": "^0.33.2",
     "youtube-dl-exec": "^2.5.5"
   },
   "devDependencies": {
