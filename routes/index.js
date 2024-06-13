@@ -75,8 +75,8 @@ async function initializePlaylists() {
     });
 }
 
-initializePlaylists();
-nextExecutions.push(setTimeout(executeAll, 120000))
+setTimeout(initializePlaylists, 120000)
+nextExecutions.push(setTimeout(executeAll, 180000))
 
 router.get('/', function(req, res) {
 
