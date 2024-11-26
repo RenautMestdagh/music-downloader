@@ -394,15 +394,15 @@ async function downloadSong(id){
 
     let toExecute = 'ffmpeg -hide_banner -loglevel error -i ' + 'tmp/songs/' + metadata.id + 'X.mp3 -id3v2_version 3 '
     if(metadata.track)
-        toExecute += ' -metadata title="' + metadata.track.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+        toExecute += ` -metadata title="${escapeShellArg(metadata.track)}"`;
     else
-        toExecute += ' -metadata title="' + metadata.uploader.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+        toExecute += ` -metadata title="${escapeShellArg(metadata.uploader)}"`;
     if(metadata.artist)
-        toExecute += '" -metadata artist="' + metadata.artist.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+        toExecute += ` -metadata artist="${escapeShellArg(metadata.artist)}"`;
     else
-        toExecute += '" -metadata artist="' + metadata.fulltitle.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+        toExecute += ` -metadata artist="${escapeShellArg(metadata.fulltitle)}"`;
     if(metadata.album)
-        toExecute += '" -metadata album="' + metadata.album.replaceAll('"','\\"').replaceAll(/'/g,'\'')
+        toExecute += ` -metadata album="${escapeShellArg(metadata.album)}"`;
     toExecute += '" tmp/songs/' + id + ".mp3"
 
     try{
@@ -422,6 +422,10 @@ async function downloadSong(id){
 
     console.log(getTimeStamp()+"Song https://music.youtube.com/watch?v="+metadata.id+" downloaded")
     currentAtSameTime--
+}
+
+function escapeShellArg(arg) {
+    return arg.replace(/(["'\\$])/g, '\\$1'); // Escapes ", ', \, and $
 }
 
 function jfSongObjToYtId(songObj) {
