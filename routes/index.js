@@ -403,7 +403,7 @@ async function downloadSong(id){
         toExecute += ` -metadata artist="${escapeShellArg(metadata.fulltitle)}"`;
     if(metadata.album)
         toExecute += ` -metadata album="${escapeShellArg(metadata.album)}"`;
-    toExecute += '" tmp/songs/' + id + ".mp3"
+    toExecute += ' tmp/songs/' + id + ".mp3"
 
     try{
         execSync(toExecute, {encoding: 'utf-8'});
