@@ -425,7 +425,7 @@ async function downloadSong(id){
 }
 
 function escapeShellArg(arg) {
-    return arg.replace(/(["'\\$])/g, '\\$1'); // Escapes ", ', \, and $
+    return arg.replace(/(["\\$])/g, '\\$1'); // Escapes ", ', \, and $
 }
 
 function jfSongObjToYtId(songObj) {
