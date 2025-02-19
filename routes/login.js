@@ -14,6 +14,8 @@ router.get("/", redirectEdit, (req,res)=>{
 router.post("/", redirectEdit, (req, res) => {
   const pass = req.body.password;
   if (pass === process.env.EDITPASS) {
+    console.log(pass)
+    console.log(process.env.EDITPASS)
     req.session.userId = 1
     return res.send("K")
   }

@@ -127,7 +127,7 @@ function submit(){
         return invalid()
 
     let xhr = new XMLHttpRequest();
-    xhr.open('POST', '/ytconfig');
+    xhr.open('POST', '/');
     xhr.setRequestHeader('content-type', 'application/json');
 
     const inputEl = document.getElementsByTagName("input")

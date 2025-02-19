@@ -18,7 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use("/ytconfig",express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(
     session({
         resave: false,
@@ -31,7 +31,7 @@ const redirectLogin = (req, res, next) => {
     if (!req.session.userId && req.url!=="/login") {
         if(req.method==='POST')
             return res.send('noSession')
-        return res.redirect('/ytconfig/login')
+        return res.redirect('/login')
     }
     next()
 }
@@ -40,7 +40,7 @@ router.use('/login', require('./routes/login'));
 
 router.use('/', redirectLogin, require('./routes/index'));
 
-app.use("/ytconfig", router)
+app.use("/", router)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

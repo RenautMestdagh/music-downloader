@@ -72,4 +72,4 @@ jobs:
             platforms: linux/arm64
             file: ./Dockerfile
             push: true
-            tags: ${{ secrets.DOCKERHUB_USERNAME }}/musicdownloader:latest
+            tags: ${{ secrets.DOCKERHUB_USERNAME }}/music-downloader:latest
