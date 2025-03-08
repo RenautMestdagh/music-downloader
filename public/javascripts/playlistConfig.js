@@ -127,7 +127,7 @@ function submit(){
         return invalid()
 
     let xhr = new XMLHttpRequest();
-    xhr.open('POST', '/');
+    xhr.open('POST', getUrl('/'));
     xhr.setRequestHeader('content-type', 'application/json');
 
     const inputEl = document.getElementsByTagName("input")

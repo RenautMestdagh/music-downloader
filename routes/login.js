@@ -8,14 +8,12 @@ const redirectEdit = (req, res, next) =>{
 }
 
 router.get("/", redirectEdit, (req,res)=>{
-  res.render('login', {title: 'Playlist config login'});
+  res.render('login', {title: 'Playlist config login', basePath: process.env.BASE_PATH || '',});
 })
 
 router.post("/", redirectEdit, (req, res) => {
   const pass = req.body.password;
   if (pass === process.env.EDITPASS) {
-    console.log(pass)
-    console.log(process.env.EDITPASS)
     req.session.userId = 1
     return res.send("K")
   }

@@ -34,7 +34,7 @@ let jfUrl
 
 if (process.env.NODE_ENV === "production"){
     storagePath = "/mnt/seafile/"
-    jfUrl = "http://localhost:8096"
+    jfUrl = "https://jellyfin.rennet.duckdns.org"
 
 } else {
     jfUrl = "https://jellyfin.rennet.duckdns.org"
@@ -80,8 +80,11 @@ nextExecutions.push(setTimeout(executeAll, 180000))
 
 router.get('/', function(req, res) {
 
-    res.render('index', { title: 'Playlist config', data: JSON.stringify(playlistCollection) });
-});
+    res.render('index', {
+        title: 'Playlist Config',
+        data: JSON.stringify(playlistCollection),
+        basePath: process.env.BASE_PATH || '', // Pass the base path to the template
+    });});
 
 router.post('/', function(req, res) {
     async function verwerk(){

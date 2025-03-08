@@ -27,6 +27,14 @@ app.use(
     })
 )
 
+const basePath = process.env.BASE_PATH || ''; // Use the environment variable or default to empty string
+
+// Middleware to prepend the base path to all routes
+app.use((req, res, next) => {
+    req.originalUrl = basePath + req.originalUrl;
+    next();
+});
+
 const redirectLogin = (req, res, next) => {
     if (!req.session.userId && req.url!=="/login") {
         if(req.method==='POST')

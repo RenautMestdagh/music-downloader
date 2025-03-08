@@ -2,7 +2,14 @@ doctype html
 html
   head
     title= title
-    link(rel='stylesheet', href='/stylesheets/style.css')
-    link(rel='icon' href='/images/favicon.ico' type='image/x-icon')
+    link(rel='stylesheet', href=`${basePath}/stylesheets/style.css`)
+    link(rel='icon' href=`${basePath}/images/favicon.ico` type='image/x-icon')
+    script.
+      // Inline the basePath and define getUrl
+      const basePath = '#{basePath}';
+      function getUrl(path) {
+        return basePath + path;
+      }
+
   body
     block content
