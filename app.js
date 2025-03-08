@@ -36,10 +36,10 @@ app.use((req, res, next) => {
 });
 
 const redirectLogin = (req, res, next) => {
-    if (!req.session.userId && req.url!=="/login") {
+    if (!req.session.userId && req.url!==( (process.env.BASE_PATH || '') + "/login")) {
         if(req.method==='POST')
             return res.send('noSession')
-        return res.redirect('/login')
+        return res.redirect( (process.env.BASE_PATH || '') + "/login")
     }
     next()
 }
