@@ -18,7 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/' + (process.env.BASE_PATH || ''), express.static(path.join(__dirname, 'public')));
 app.use(
     session({
         resave: false,
@@ -48,7 +48,7 @@ router.use('/login', require('./routes/login'));
 
 router.use('/', redirectLogin, require('./routes/index'));
 
-app.use("/", router)
+app.use('/' + (process.env.BASE_PATH || ''), router)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
