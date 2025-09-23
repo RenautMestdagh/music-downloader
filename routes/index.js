@@ -83,7 +83,7 @@ router.get('/', function(req, res) {
     res.render('index', {
         title: 'Playlist Config',
         data: JSON.stringify(playlistCollection),
-        basePath: process.env.BASE_PATH || '', // Pass the base path to the template
+        basePath: '', // Pass the base path to the template
     });});
 
 router.post('/', function(req, res) {
