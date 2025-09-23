@@ -83,7 +83,7 @@ router.get('/', function(req, res) {
     res.render('index', {
         title: 'Playlist Config',
         data: JSON.stringify(playlistCollection),
-        basePath: '', // Pass the base path to the template
+        basePath: process.env.BASE_PATH || '', // Pass the base path to the template
     });});
 
 router.post('/', function(req, res) {
@@ -358,7 +358,10 @@ async function downloadSong(id){
         })
 
     } catch (e) {
-        console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download")
+        if(e.name === "ChildProcessError")
+            console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download because of age restrictions")
+        else
+            console.error(getTimeStamp()+"Song https://youtube.com/watch?v="+id+" failed to download")
         return currentAtSameTime --
     }
 
