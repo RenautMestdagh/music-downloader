@@ -1,5 +1,6 @@
 ffmpeg.exe
 node_modules
 .idea
-tmp/
+tmp/*
+!tmp/**/.gitkeep
 .env
