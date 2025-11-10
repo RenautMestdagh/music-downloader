@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:24-alpine
 
 # Install dependencies
 RUN apk add --no-cache \
@@ -17,7 +17,7 @@ RUN npm install
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p /data /songs /tmp/songs /tmp/img
+RUN mkdir -p /data /songs /tmp/songs /tmp/img && chown -R node:node /data /songs /tmp/songs /tmp/img
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
