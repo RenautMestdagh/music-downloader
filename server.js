@@ -7,6 +7,8 @@ const SQLiteStore = require('connect-sqlite3')(session);
 
 const { auth } = require("./middleware/auth");
 const downloadService = require('./services/downloadService');
+const paths = require('./config/paths');
+const fs = require("fs");
 
 const app = express();
 
@@ -14,11 +16,15 @@ app.set('trust proxy', true);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
-// Ensure data directory exists for sessions
-const fs = require('fs');
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+const DB_PATH = paths.dbPath;
+const DB_DIR = path.dirname(DB_PATH);
+
+// Ensure directory exists
+if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, {
+        recursive: true,
+        mode: process.env.NODE_ENV === 'production' ? 0o750 : 0o777
+    });
 }
 
 // Enhanced session configuration
@@ -26,7 +32,7 @@ app.use(
     session({
         store: new SQLiteStore({
             db: 'sessions.db',
-            dir: dataDir,
+            dir: DB_DIR,
             table: 'sessions'
         }),
         secret: process.env.SESSION_SECRET || 'music-downloader-secret-key-change-in-production',
