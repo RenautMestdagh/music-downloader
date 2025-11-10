@@ -5,7 +5,6 @@ RUN apk add --no-cache \
     python3 \
     py3-pip \
     ffmpeg \
-    && pip3 install --upgrade pip
 
 # Create app directory
 WORKDIR /usr/app
