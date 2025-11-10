@@ -2,18 +2,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const paths = require('./paths');
 
-// Resolve DB path based on environment
-const resolveDBPath = () => {
-    if (process.env.DB_PATH) {
-        return process.env.DB_PATH;
-    }
-    return process.env.NODE_ENV === 'production'
-        ? '/data/music_downloader.db'
-        : path.join(__dirname, '../data/music_downloader.db');
-};
-
-const DB_PATH = resolveDBPath();
+const DB_PATH = paths.dbPath;
 const DB_DIR = path.dirname(DB_PATH);
 
 // Ensure directory exists
