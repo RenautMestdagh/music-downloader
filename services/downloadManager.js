@@ -90,32 +90,56 @@ class DownloadManager {
     async fetchVideoMetadata(ytId) {
         console.log(`Fetching metadata for ${ytId}`);
 
-        return await youtubedl(`https://music.youtube.com/watch?v=${ytId}`, {
-            dumpSingleJson: true,
-            noCheckCertificates: true,
-            noWarnings: true,
-            preferFreeFormats: true,
-            addHeader: [
-                'referer:youtube.com',
-                'user-agent:googlebot'
-            ],
-        });
+        const url = `https://music.youtube.com/watch?v=${ytId}`;
+        let metaData = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            metaData = await youtubedl(url, {
+                dumpSingleJson: true,
+                noCheckCertificates: true,
+                noWarnings: true,
+                preferFreeFormats: true,
+                addHeader: [
+                    'referer:youtube.com',
+                    'user-agent:googlebot'
+                ],
+            });
+
+            if (metaData && metaData.id)
+                return metaData;
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        throw new Error(`🚫 Failed to fetch valid metadata after 3 attempts for ${ytId}`);
     }
 
     async downloadAudioFile(ytId) {
         console.log(`Downloading audio for ${ytId}`);
 
-        await youtubedl(`https://music.youtube.com/watch?v=${ytId}`, {
-            noCheckCertificates: true,
-            noWarnings: true,
-            preferFreeFormats: true,
-            addHeader: [
-                'referer:youtube.com',
-                'user-agent:googlebot'
-            ],
-            output: path.join(this.tmpSongsPath, `${ytId}X.mp3`),
-            format: "bestaudio",
-        });
+        const url = `https://music.youtube.com/watch?v=${ytId}`;
+        const filePath = path.join(this.tmpSongsPath, `${ytId}X.mp3`);
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            await youtubedl(url, {
+                noCheckCertificates: true,
+                noWarnings: true,
+                preferFreeFormats: true,
+                addHeader: [
+                    'referer:youtube.com',
+                    'user-agent:googlebot'
+                ],
+                output: filePath,
+                format: 'bestaudio',
+            });
+            if (fs.existsSync(filePath))
+                return;
+
+            // Wait 1 second before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        throw new Error(`🚫 Failed to download audio after 3 attempts for ${ytId}`);
     }
 
     async processThumbnail(metadata) {
