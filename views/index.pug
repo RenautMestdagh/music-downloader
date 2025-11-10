@@ -1,9 +1,54 @@
+//- views/index.pug
 extends layout
 
 block content
-    data.invis= data
-    h1= title
-    p
-    .playlistDiv
+    .container
+        header.header
+            .title-container
+                h1.title= title
+            .header-actions
+                button.btn.btn-primary(type="button" onclick="showAddPlaylistModal()")
+                    span.plus-icon +
+                    | Add New Playlist
 
-    script(type="text/javascript" src=`/${basePath}/javascripts/playlistConfig.js`)
+        .status-alert#statusAlert(style="display: none;")
+            .alert-content
+                span#alertMessage
+                button.alert-close(onclick="hideAlert()") ×
+
+        main.main-content
+            .playlists-container
+                #playlistsList.playlists-list
+
+    //- Playlist Modal
+    #playlistModal.modal
+        .modal-content
+            .modal-header
+                h3.modal-title#modalTitle Add New Playlist
+                button.modal-close(type="button" onclick="hidePlaylistModal()") ×
+            .modal-body
+                .form-group
+                    label(for="playlistName") Playlist Name
+                    input.form-input#playlistName(
+                        type="text"
+                        placeholder="Enter playlist name"
+                    )
+                .form-group
+                    label(for="playlistYtId") YouTube Playlist ID
+                    .input-with-prefix
+                        span.input-prefix https://music.youtube.com/playlist?list=
+                        input.form-input#playlistYtId(
+                            type="text"
+                            placeholder="Enter YouTube playlist ID"
+                        )
+                    .validation-message#playlistValidation
+            .modal-actions
+                button.btn.btn-secondary(type="button" onclick="hidePlaylistModal()") Cancel
+                button.btn.btn-primary#modalSaveBtn(type="button" onclick="savePlaylist()") Add Playlist
+
+    script.
+        window.playlists = !{data};
+        window.jf_url = '#{jfurl}';
+        window.currentTitle = '#{title}';
+
+    script(src=`javascripts/playlistManager.js` defer)
