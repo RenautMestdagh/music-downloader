@@ -4,7 +4,7 @@ FROM node:18-alpine
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    ffmpeg \
+    ffmpeg
 
 # Create app directory
 WORKDIR /usr/app
