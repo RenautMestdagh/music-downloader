@@ -28,8 +28,8 @@ RUN groupadd -r app && \
 
 # 2. Create necessary directories and ensure they are owned by the node:app group.
 RUN mkdir -p /data /songs /tmp/songs /tmp/img && \
-    chown -R node:app /data /songs /tmp/songs /tmp/img && \
-    chmod -R g+w /data /songs /tmp/songs /tmp/img
+    chown -R 1002:100 /data /songs /tmp/songs /tmp/img && \
+    chmod -R 777 /data /songs /tmp/songs /tmp/img
 
 # 3. CRITICAL: Make them group-writable (g+w).
 # This allows any user running the container process to write
