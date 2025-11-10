@@ -10,22 +10,22 @@
     "dependencies": {
         "axios": "^1.13.2",
         "connect-sqlite3": "^0.9.16",
-        "dotenv": "^16.1.4",
+        "dotenv": "^17.2.3",
         "express": "^5.1.0",
         "express-basic-auth": "^1.2.1",
         "express-rate-limit": "^8.2.1",
         "express-session": "^1.18.2",
         "http-errors": "^2.0.0",
-        "morgan": "^1.10.0",
-        "pug": "^3.0.2",
-        "sequelize": "^6.37.2",
-        "sequelize-cli": "^6.6.2",
+        "morgan": "^1.10.1",
+        "pug": "^3.0.3",
+        "sequelize": "^6.37.7",
+        "sequelize-cli": "^6.6.3",
         "serve-favicon": "^2.5.1",
-        "sharp": "^0.33.2",
+        "sharp": "^0.34.5",
         "sqlite3": "^5.1.7",
         "youtube-dl-exec": "^3.0.26"
     },
     "devDependencies": {
-        "nodemon": "^3.0.1"
+        "nodemon": "^3.1.10"
     }
 }
