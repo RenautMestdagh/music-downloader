@@ -12,8 +12,8 @@ const getPaths = () => {
     );
 
     // Temporary directories for processing
-    const tmpSongsPath = path.join(__dirname, '../tmp/songs');
-    const tmpImgPath = path.join(__dirname, '../tmp/img');
+    const tmpSongsPath = process.env.NODE_ENV === "production" ? "/tmp/songs" : path.join(__dirname, '../tmp/songs');
+    const tmpImgPath = process.env.NODE_ENV === "production" ? "/tmp/img" : path.join(__dirname, '../tmp/img');
 
     return {
         storagePath,
