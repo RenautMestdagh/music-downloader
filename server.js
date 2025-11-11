@@ -83,7 +83,7 @@ app.post('/login', express.json(), (req, res) => {
 app.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            console.error('Error destroying session:', err);
+            console.error(`[${new Date().toISOString()}]: Error destroying session:`,err);
         }
         res.json({ success: true, message: 'Logged out successfully' });
     });
@@ -106,7 +106,7 @@ app.use('/api', auth, require('./routes/api'));
 
 // Error Handling
 app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
+    console.error(`[${new Date().toISOString()}]: Error:`,err.stack);
 
     if (err.status === 401) {
         return res.status(401).set('WWW-Authenticate', 'Basic realm="Protected Area"').send('Unauthorized');
@@ -124,14 +124,14 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
-    console.log(`Music Downloader running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[${new Date().toISOString()}]: Music Downloader running on port ${PORT}`);
+    console.log(`[${new Date().toISOString()}]: Environment: ${process.env.NODE_ENV || 'development'}`);
 
     // Start the download service (runs independently)
     try {
         await downloadService.initialize();
-        console.log('Download service initialized successfully');
+        console.log(`[${new Date().toISOString()}]: Download service initialized successfully`);
     } catch (error) {
-        console.error('Failed to initialize download service:', error);
+        console.error(`[${new Date().toISOString()}]: Failed to initialize download service:`, error);
     }
 });

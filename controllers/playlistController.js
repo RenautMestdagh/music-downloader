@@ -13,7 +13,7 @@ class PlaylistController {
                 data: JSON.stringify(playlists),
             });
         } catch (error) {
-            console.error('Error loading playlists:', error);
+            console.error(`[${new Date().toISOString()}]: Error loading playlists:`,error);
             res.status(500).render('error', {
                 message: 'Error loading playlists',
                 error: process.env.NODE_ENV === 'development' ? error : {}
@@ -27,7 +27,7 @@ class PlaylistController {
             const playlists = await dbQuery('SELECT * FROM playlists ORDER BY name');
             res.json(playlists);
         } catch (error) {
-            console.error('Error getting playlists:', error);
+            console.error(`[${new Date().toISOString()}]: Error getting playlists:`,error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -69,7 +69,7 @@ class PlaylistController {
                 yt_id,
             });
         } catch (error) {
-            console.error('Error creating playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error creating playlist:`,error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -121,7 +121,7 @@ class PlaylistController {
 
             res.json({ message: 'Playlist updated successfully' });
         } catch (error) {
-            console.error('Error updating playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error updating playlist:`,error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -146,7 +146,7 @@ class PlaylistController {
 
             res.json({ message: 'Playlist deleted successfully' });
         } catch (error) {
-            console.error('Error deleting playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error deleting playlist:`,error);
             res.status(500).json({ error: error.message });
         }
     }

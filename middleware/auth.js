@@ -30,7 +30,7 @@ const sessionAuth = (req, res, next) => {
         req.session.user = process.env.BASIC_AUTH_USER;
         req.session.cookie.maxAge = 60 * 60 * 1000; // 1 hour
 
-        console.log(`User ${req.session.user} authenticated via session`);
+        console.log(`[${new Date().toISOString()}]: User ${req.session.user} authenticated via session`);
         next();
     });
 };

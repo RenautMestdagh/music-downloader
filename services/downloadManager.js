@@ -37,7 +37,7 @@ class DownloadManager {
             ? fs.readdirSync(this.storagePath).map(filename => path.parse(filename).name)
             : [];
 
-        console.log(`Loaded ${this.downloadedFiles.length} existing files`);
+        console.log(`[${new Date().toISOString()}]: Loaded ${this.downloadedFiles.length} existing files`);
     }
 
     isFileDownloaded(ytId) {
@@ -46,18 +46,18 @@ class DownloadManager {
 
     async processDownloads(songsToDownload) {
         if (songsToDownload.size === 0) {
-            console.log('No new songs to download');
+            console.log(`[${new Date().toISOString()}]: No new songs to download`);
             return;
         }
 
-        console.log(`Processing ${songsToDownload.size} downloads...`);
+        console.log(`[${new Date().toISOString()}]: Processing ${songsToDownload.size} downloads...`);
 
         const downloadPromises = Array.from(songsToDownload).map(ytId =>
             this.downloadSongWithConcurrency(ytId)
         );
 
         await Promise.allSettled(downloadPromises);
-        console.log('All downloads processed');
+        console.log(`[${new Date().toISOString()}]: All downloads processed`);
     }
 
     async downloadSongWithConcurrency(ytId) {
@@ -81,14 +81,14 @@ class DownloadManager {
             await this.processThumbnail(metadata);
             await this.processAudioFile(ytId, metadata);
 
-            console.log(`Downloaded: ${metadata.track || metadata.uploader} - ${metadata.artist || metadata.fulltitle}`);
+            console.log(`[${new Date().toISOString()}]: Downloaded: ${metadata.track || metadata.uploader} - ${metadata.artist || metadata.fulltitle}`);
         } catch (error) {
-            console.error(`Download failed for ${ytId}:`, error.message);
+            console.error(`[${new Date().toISOString()}]: Download failed for https://music.youtube.com/watch?v=${ytId}:`, error.message);
         }
     }
 
     async fetchVideoMetadata(ytId) {
-        console.log(`Fetching metadata for ${ytId}`);
+        console.log(`[${new Date().toISOString()}]: Fetching metadata for ${ytId}`);
 
         const url = `https://music.youtube.com/watch?v=${ytId}`;
         let metaData = null;
@@ -111,11 +111,11 @@ class DownloadManager {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        throw new Error(`🚫 Failed to fetch valid metadata after 3 attempts for ${ytId}`);
+        throw new Error(`Failed to fetch valid metadata`);
     }
 
     async downloadAudioFile(ytId) {
-        console.log(`Downloading audio for ${ytId}`);
+        console.log(`[${new Date().toISOString()}]: Downloading audio for ${ytId}`);
 
         const url = `https://music.youtube.com/watch?v=${ytId}`;
         const filePath = path.join(this.tmpSongsPath, `${ytId}X.mp3`);
@@ -139,11 +139,11 @@ class DownloadManager {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        throw new Error(`🚫 Failed to download audio after 3 attempts for ${ytId}`);
+        throw new Error(`Failed to download audio`);
     }
 
     async processThumbnail(metadata) {
-        console.log(`Processing thumbnail for ${metadata.id}`);
+        console.log(`[${new Date().toISOString()}]: Processing thumbnail for ${metadata.id}`);
 
         const response = await axios.get(metadata.thumbnail, {
             responseType: "arraybuffer",
@@ -155,7 +155,7 @@ class DownloadManager {
     }
 
     async processAudioFile(ytId, metadata) {
-        console.log(`Processing audio file for ${ytId}`);
+        console.log(`[${new Date().toISOString()}]: Processing audio file for ${ytId}`);
 
         const tempAudioPath = path.join(this.tmpSongsPath, `${ytId}X.mp3`);
         const finalAudioPath = path.join(this.storagePath, `${ytId}.mp3`);
@@ -202,7 +202,7 @@ class DownloadManager {
                     fs.unlinkSync(filePath);
                 }
             } catch (error) {
-                console.error(`Error cleaning up file ${filePath}:`, error.message);
+                console.error(`[${new Date().toISOString()}]: Error cleaning up file ${filePath}:`, error.message);
             }
         });
     }

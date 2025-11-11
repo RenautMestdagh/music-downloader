@@ -18,12 +18,8 @@ class DownloadService {
     }
 
     async initialize() {
-        console.log('Initializing Download Service...');
-
         this.fileManager.ensureDirectories();
         this.scheduleNextExecution(10000); // Start first sync in 10 seconds
-
-        console.log('Download Service initialized');
     }
 
     scheduleNextExecution(delay = null) {
@@ -32,17 +28,19 @@ class DownloadService {
         }
 
         const executionDelay = delay !== null ? delay : this.repeatInterval;
+        const nextExecutionTime = new Date(Date.now() + executionDelay);
 
         this.currentTimeout = setTimeout(() => {
             this.executeSyncCycle();
         }, executionDelay);
 
-        console.log(`Next sync scheduled in ${executionDelay / 1000} seconds`);
+        console.log(`[${new Date().toISOString()}]: Next sync scheduled at ${nextExecutionTime.toISOString()}`);
     }
 
     async executeSyncCycle() {
         if (this.isRunning) {
-            console.log('Sync already in progress, skipping...');
+            console.log(`[${new Date().toISOString()}]: Sync already in progress, skipping...`);
+
             this.scheduleNextExecution(30000); // Retry in 30 seconds
             return;
         }
@@ -50,34 +48,20 @@ class DownloadService {
         this.isRunning = true;
 
         try {
-            console.log('Sync cycle started');
+            console.log(`[${new Date().toISOString()}]: Sync cycle started`);
 
             await this.syncManager.loadLibraryData();
             await this.fileManager.clearTemporaryFiles();
             await this.syncManager.syncYouTubePlaylists();
 
-            console.log('Sync cycle complete');
+            console.log(`[${new Date().toISOString()}]: Sync cycle complete`);
 
         } catch (error) {
-            console.error('Sync cycle failed:', error);
+            console.error(`[${new Date().toISOString()}]: Sync cycle failed:`, error);
         } finally {
             this.isRunning = false;
             this.scheduleNextExecution();
         }
-    }
-
-    stop() {
-        if (this.currentTimeout) {
-            clearTimeout(this.currentTimeout);
-            this.currentTimeout = null;
-        }
-        this.isRunning = false;
-        console.log('Download Service stopped');
-    }
-
-    getTimeStamp() {
-        const d = new Date();
-        return `[${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}] `;
     }
 }
 

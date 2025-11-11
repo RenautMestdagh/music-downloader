@@ -25,13 +25,13 @@ class SyncManager {
     }
 
     async loadLibraryData() {
-        console.log('Loading Jellyfin library data...');
+        console.log(`[${new Date().toISOString()}]: Loading Jellyfin library data...`);
 
         await this.loadJellyfinLibrary();
         await this.loadJellyfinPlaylists();
         this.downloadManager.loadDownloadedFiles();
 
-        console.log(`Loaded ${this.jfLibrary.length} library items and ${Object.keys(this.jfPlaylists).length} playlists`);
+        console.log(`[${new Date().toISOString()}]: Loaded ${this.jfLibrary.length} library items and ${Object.keys(this.jfPlaylists).length} playlists`);
     }
 
     async loadJellyfinLibrary() {
@@ -40,9 +40,12 @@ class SyncManager {
                 `${this.jfUrl}/items?api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}&parentId=${process.env.JF_LIBID}&Fields=Path`,
                 { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
             );
-            this.jfLibrary = response.data.Items;
+            this.jfLibrary = response.data.Items.map(jfSong => ({
+                id: jfSong.Id,
+                ytId: this.extractYtIdFromPath(jfSong.Path)
+            }));
         } catch (error) {
-            console.error('Error loading Jellyfin library:', error.message);
+            console.error(`[${new Date().toISOString()}]: Error loading Jellyfin library:`, error.message);
             this.jfLibrary = [];
         }
     }
@@ -57,16 +60,19 @@ class SyncManager {
                     `${this.jfUrl}/Playlists/${playlist.jf_id}/Items?api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}&Fields=Path`,
                     { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
                 );
-                this.jfPlaylists[playlist.jf_id] = response.data.Items;
+                this.jfPlaylists[playlist.jf_id] = response.data.Items.map(jfSong => ({
+                    ytId: this.extractYtIdFromPath(jfSong.Path),
+                    playlistItemId: jfSong.PlaylistItemId
+                }));
             } catch (error) {
-                console.error(`Error loading Jellyfin playlist ${playlist.jf_id}:`, error.message);
+                console.error(`[${new Date().toISOString()}]: Error loading Jellyfin playlist ${playlist.jf_id}:`, error.message);
                 this.jfPlaylists[playlist.jf_id] = [];
             }
         }
     }
 
     async syncYouTubePlaylists() {
-        console.log('Syncing YouTube playlists...');
+        console.log(`[${new Date().toISOString()}]: Syncing YouTube playlists...`);
 
         this.resetYouTubeData();
         const playlists = await dbQuery('SELECT * FROM playlists ORDER BY name');
@@ -77,7 +83,7 @@ class SyncManager {
 
         await this.syncAllPlaylists();
 
-        console.log(`YouTube sync complete. Processed ${this.apiCallCount} API calls`);
+        console.log(`[${new Date().toISOString()}]: YouTube sync complete. Processed ${this.apiCallCount} API calls`);
     }
 
     resetYouTubeData() {
@@ -92,7 +98,7 @@ class SyncManager {
         let pageToken = "";
         let hasMorePages = true;
 
-        console.log(`Fetching YouTube playlist: ${playlist.name}`);
+        console.log(`[${new Date().toISOString()}]: Fetching YouTube playlist: ${playlist.name}`);
 
         while (hasMorePages && this.apiCallCount < this.maxApiCalls) {
             try {
@@ -113,19 +119,19 @@ class SyncManager {
                 hasMorePages = !!response.data.nextPageToken;
 
             } catch (error) {
-                console.error(`YouTube API Error for playlist ${playlist.name}:`, error.response?.data || error.message);
+                console.error(`[${new Date().toISOString()}]: YouTube API Error for playlist ${playlist.name}:`, error.response?.data || error.message);
                 break;
             }
         }
 
-        console.log(`"${playlist.name}": ${this.ytPlaylists[ytPlaylistId].size} items`);
+        console.log(`[${new Date().toISOString()}]: "${playlist.name}": ${this.ytPlaylists[ytPlaylistId].size} items`);
     }
 
     async syncAllPlaylists() {
         const playlists = await dbQuery('SELECT * FROM playlists');
         const songsToDownload = new Set();
 
-        console.log('Syncing individual playlists...');
+        console.log(`[${new Date().toISOString()}]: Syncing individual playlists...`);
 
         for (const playlist of playlists) {
             await this.syncSinglePlaylist(playlist, songsToDownload);
@@ -134,7 +140,7 @@ class SyncManager {
         await this.downloadManager.processDownloads(songsToDownload);
         await this.fileManager.cleanupOrphanedFiles(this.ytSongs);
 
-        console.log(`All playlists synced. ${songsToDownload.size} songs to download`);
+        console.log(`[${new Date().toISOString()}]: All playlists synced. ${songsToDownload.size} songs to download`);
     }
 
     async syncSinglePlaylist(playlist, songsToDownload) {
@@ -146,25 +152,26 @@ class SyncManager {
     }
 
     async removeMissingSongs(playlist, jfPlaylist, ytPlaylist) {
-        const songsToRemove = this.findSongsToRemove(jfPlaylist, ytPlaylist);
+        const songsToRemove = jfPlaylist.filter(jfSong => !ytPlaylist.has(jfSong.ytId));
 
         if (songsToRemove.length > 0) {
-            console.log(`Removing ${songsToRemove.length} songs from ${playlist.name}`);
+            console.log(`[${new Date().toISOString()}]: Removing ${songsToRemove.length} songs from ${playlist.name}`);
             await this.removeSongsFromPlaylist(playlist.jf_id, songsToRemove);
         }
     }
 
     async addNewSongs(playlist, jfPlaylist, ytPlaylist, songsToDownload) {
-        const songsToAdd = this.findSongsToAdd(jfPlaylist, ytPlaylist);
+        const existingYtIds = new Set(jfPlaylist.map(song => song.ytId));
+        const songsToAdd = Array.from(ytPlaylist).filter(ytId => !existingYtIds.has(ytId));
 
         if (songsToAdd.length > 0) {
-            console.log(`Adding ${songsToAdd.length} songs to ${playlist.name}`);
+            console.log(`[${new Date().toISOString()}]: Adding ${songsToAdd.length} songs to ${playlist.name}`);
         }
 
         for (const ytId of songsToAdd) {
-            const jfSong = this.findSongInLibrary(ytId);
+            const jfSong = this.jfLibrary.find(song => song.ytId === ytId);
             if (jfSong) {
-                await this.addSongToPlaylist(playlist.jf_id, jfSong.Id);
+                await this.addSongToPlaylist(playlist.jf_id, jfSong.id);
             } else if (!this.downloadManager.isFileDownloaded(ytId)) {
                 songsToDownload.add(ytId);
             }
@@ -172,31 +179,9 @@ class SyncManager {
     }
 
     // Helper methods
-    findSongsToRemove(jfPlaylist, ytPlaylist) {
-        return jfPlaylist
-            .filter(jfSong => {
-                const ytId = this.extractYtIdFromPath(jfSong.Path);
-                return !ytPlaylist.has(ytId);
-            })
-            .map(jfSong => jfSong.PlaylistItemId);
-    }
-
-    findSongsToAdd(jfPlaylist, ytPlaylist) {
-        const existingYtIds = new Set(
-            jfPlaylist.map(song => this.extractYtIdFromPath(song.Path))
-        );
-
-        return Array.from(ytPlaylist).filter(ytId => !existingYtIds.has(ytId));
-    }
-
-    findSongInLibrary(ytId) {
-        return this.jfLibrary.find(song =>
-            this.extractYtIdFromPath(song.Path) === ytId
-        );
-    }
-
-    async removeSongsFromPlaylist(playlistId, songIds) {
+    async removeSongsFromPlaylist(playlistId, songsToRemove) {
         const batchSize = 50;
+        const songIds = songsToRemove.map(song => song.PlaylistItemId);
 
         for (let i = 0; i < songIds.length; i += batchSize) {
             const batch = songIds.slice(i, i + batchSize);
@@ -208,7 +193,7 @@ class SyncManager {
                     { headers: { "Accept-Encoding": "gzip,deflate,br" } }
                 );
             } catch (error) {
-                console.error(`Error removing songs from playlist ${playlistId}:`, error.message);
+                console.error(`[${new Date().toISOString()}]: Error removing songs from playlist ${playlistId}:`, error.message);
             }
         }
     }
@@ -221,7 +206,7 @@ class SyncManager {
                 { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
             );
         } catch (error) {
-            console.error(`Error adding song to playlist ${playlistId}:`, error.message);
+            console.error(`[${new Date().toISOString()}]: Error adding song to playlist ${playlistId}:`, error.message);
         }
     }
 
