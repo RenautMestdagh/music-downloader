@@ -17,9 +17,10 @@ if (!fs.existsSync(DB_DIR)) {
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
-        console.error('Database connection error:', err.message);
+        console.error(`[${new Date().toISOString()}]: Database connection error:`,err.message);
     } else {
-        console.log('Connected to SQLite database at', DB_PATH);
+        console.log(`[${new Date().toISOString()}]: Connected to SQLite database at`,DB_PATH);
+
         // Enable foreign key constraints and better performance
         db.run('PRAGMA foreign_keys = ON');
         db.run('PRAGMA journal_mode = WAL');

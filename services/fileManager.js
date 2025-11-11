@@ -17,19 +17,14 @@ class FileManager {
     ensureDirectories() {
         const directories = [this.storagePath, this.tmpSongsPath, this.tmpImgPath];
 
-        console.log('Ensuring directories exist...');
-
         directories.forEach(dir => {
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
-                console.log(`Created directory: ${dir}`);
             }
         });
     }
 
     async clearTemporaryFiles() {
-        console.log('Cleaning temporary files...');
-
         const tmpDirs = [this.tmpSongsPath, this.tmpImgPath];
         let totalCleaned = 0;
 
@@ -42,22 +37,18 @@ class FileManager {
                     try {
                         fs.unlinkSync(path.join(tmpDir, file));
                     } catch (error) {
-                        console.error(`Error deleting tmp file ${file}:`, error.message);
+                        console.error(`[${new Date().toISOString()}]: Error deleting tmp file ${file}:`, error.message);
                     }
                 }
             }
         }
-
-        console.log(`Cleared ${totalCleaned} temporary files`);
     }
 
     async cleanupOrphanedFiles(activeYtIds) {
-        if (!fs.existsSync(this.storagePath)) {
-            console.log('Storage path does not exist, skipping orphan cleanup');
+        if (!fs.existsSync(this.storagePath))
             return;
-        }
 
-        console.log('Checking for orphaned files...');
+        console.log(`[${new Date().toISOString()}]: Checking for orphaned files...`);
 
         const files = fs.readdirSync(this.storagePath);
         let orphansRemoved = 0;
@@ -71,17 +62,17 @@ class FileManager {
                 try {
                     fs.unlinkSync(path.join(this.storagePath, file));
                     orphansRemoved++;
-                    console.log(`Removed orphaned file: ${file}`);
+                    console.log(`[${new Date().toISOString()}]: Removed orphaned file: ${file}`);
                 } catch (error) {
-                    console.error(`Error removing orphaned file ${file}:`, error.message);
+                    console.error(`[${new Date().toISOString()}]: Error removing orphaned file ${file}:`, error.message);
                 }
             }
         }
 
         if (orphansRemoved > 0) {
-            console.log(`Removed ${orphansRemoved} orphaned files`);
+            console.log(`[${new Date().toISOString()}]: Removed ${orphansRemoved} orphaned files`);
         } else {
-            console.log('No orphaned files found');
+            console.log(`[${new Date().toISOString()}]: No orphaned files found`);
         }
     }
 }

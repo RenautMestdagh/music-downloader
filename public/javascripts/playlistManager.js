@@ -24,7 +24,7 @@ class PlaylistManager {
                 const element = this.createPlaylistElement(playlist, index);
                 container.appendChild(element);
             } catch (error) {
-                console.error('Error rendering playlist:', error);
+                console.error(`[${new Date().toISOString()}]: Error rendering playlist:`,error);
             }
         });
     }
@@ -244,7 +244,7 @@ class PlaylistManager {
             this.showAlert('Playlist created successfully', 'success');
 
         } catch (error) {
-            console.error('Error creating playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error creating playlist:`,error);
             this.showAlert(`Error creating playlist: ${error.message}`, 'error');
         }
     }
@@ -284,7 +284,7 @@ class PlaylistManager {
             this.showAlert('Playlist updated successfully', 'success');
 
         } catch (error) {
-            console.error('Error updating playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error updating playlist:`,error);
             this.showAlert(`Error updating playlist: ${error.message}`, 'error');
         }
     }
@@ -320,7 +320,7 @@ class PlaylistManager {
             this.showAlert('Playlist deleted successfully', 'success');
 
         } catch (error) {
-            console.error('Error deleting playlist:', error);
+            console.error(`[${new Date().toISOString()}]: Error deleting playlist:`,error);
             this.showAlert(`Error deleting playlist: ${error.message}`, 'error');
         }
     }
@@ -410,6 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playlistManager = new PlaylistManager();
         window.playlistManager = playlistManager;
     } catch (error) {
-        console.error('Error initializing PlaylistManager:', error);
+        console.error(`[${new Date().toISOString()}]: Error initializing PlaylistManager:`,error);
     }
 });
