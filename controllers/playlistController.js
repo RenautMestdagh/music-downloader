@@ -1,6 +1,7 @@
 // controllers/playlistController.js
 const axios = require('axios');
 const { dbQuery, dbGet, dbRun } = require('../config/database');
+const logger = require('../utils/logger'); // Add this
 
 class PlaylistController {
     // Web view method (moved from web.js)
@@ -13,7 +14,7 @@ class PlaylistController {
                 data: JSON.stringify(playlists),
             });
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error loading playlists:`,error);
+            logger.error('Error loading playlists:', error);
             res.status(500).render('error', {
                 message: 'Error loading playlists',
                 error: process.env.NODE_ENV === 'development' ? error : {}
@@ -27,7 +28,7 @@ class PlaylistController {
             const playlists = await dbQuery('SELECT * FROM playlists ORDER BY name');
             res.json(playlists);
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error getting playlists:`,error);
+            logger.error('Error getting playlists:', error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -62,6 +63,7 @@ class PlaylistController {
                 [name, jfResponse.data.Id, yt_id]
             );
 
+            logger.info(`Created playlist: ${name} (YouTube ID: ${yt_id})`);
             res.status(201).json({
                 id: result.id,
                 name,
@@ -69,7 +71,7 @@ class PlaylistController {
                 yt_id,
             });
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error creating playlist:`,error);
+            logger.error('Error creating playlist:', error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -119,9 +121,10 @@ class PlaylistController {
                 );
             }
 
+            logger.info(`Updated playlist: ${playlist.name} -> ${name || playlist.name}`);
             res.json({ message: 'Playlist updated successfully' });
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error updating playlist:`,error);
+            logger.error('Error updating playlist:', error);
             res.status(500).json({ error: error.message });
         }
     }
@@ -144,9 +147,10 @@ class PlaylistController {
             // Delete from database
             await dbRun('DELETE FROM playlists WHERE id = ?', [id]);
 
+            logger.info(`Deleted playlist: ${playlist.name}`);
             res.json({ message: 'Playlist deleted successfully' });
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error deleting playlist:`,error);
+            logger.error('Error deleting playlist:', error);
             res.status(500).json({ error: error.message });
         }
     }

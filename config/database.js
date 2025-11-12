@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const paths = require('./paths');
+const logger = require('../utils/logger'); // Add this
 
 const DB_PATH = paths.dbPath;
 const DB_DIR = path.dirname(DB_PATH);
@@ -17,9 +18,9 @@ if (!fs.existsSync(DB_DIR)) {
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
-        console.error(`[${new Date().toISOString()}]: Database connection error:`,err.message);
+        logger.error('Database connection error:', err.message);
     } else {
-        console.log(`[${new Date().toISOString()}]: Connected to SQLite database at`,DB_PATH);
+        logger.info(`Connected to SQLite database at ${DB_PATH}`);
 
         // Enable foreign key constraints and better performance
         db.run('PRAGMA foreign_keys = ON');
@@ -33,12 +34,12 @@ db.serialize(() => {
     // Create playlists table
     db.run(`
         CREATE TABLE IF NOT EXISTS playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            jf_id TEXT UNIQUE NOT NULL,
-            yt_id TEXT UNIQUE NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                 name TEXT NOT NULL,
+                                                 jf_id TEXT UNIQUE NOT NULL,
+                                                 yt_id TEXT UNIQUE NOT NULL,
+                                                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
 });

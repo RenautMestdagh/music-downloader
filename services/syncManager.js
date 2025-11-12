@@ -2,7 +2,7 @@
 const axios = require('axios');
 const { dbQuery } = require('../config/database');
 const DownloadManager = require('./downloadManager');
-const FileManager = require('./fileManager');
+const logger = require('../utils/logger'); // Add this
 
 /**
  * Synchronization manager for YouTube and Jellyfin integration
@@ -12,7 +12,6 @@ class SyncManager {
     constructor() {
         this.jfUrl = process.env.JF_URL;
         this.downloadManager = new DownloadManager();
-        this.fileManager = new FileManager();
 
         // Data stores
         this.ytPlaylists = {};
@@ -25,27 +24,27 @@ class SyncManager {
     }
 
     async loadLibraryData() {
-        console.log(`[${new Date().toISOString()}]: Loading Jellyfin library data...`);
+        await logger.syncOperation('Loading Jellyfin library data', async () => {
+            await this.loadJellyfinLibrary();
+            await this.loadJellyfinPlaylists();
+            logger.info(`Loaded ${this.jfLibrary.length} library items and ${Object.keys(this.jfPlaylists).length} playlists`);
 
-        await this.loadJellyfinLibrary();
-        await this.loadJellyfinPlaylists();
-        this.downloadManager.loadDownloadedFiles();
-
-        console.log(`[${new Date().toISOString()}]: Loaded ${this.jfLibrary.length} library items and ${Object.keys(this.jfPlaylists).length} playlists`);
+            this.downloadManager.loadDownloadedFiles();
+        });
     }
 
     async loadJellyfinLibrary() {
         try {
             const response = await axios.get(
-                `${this.jfUrl}/items?api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}&parentId=${process.env.JF_LIBID}&Fields=Path`,
-                { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
+                `${this.jfUrl}/items?userId=${process.env.JF_UID}&parentId=${process.env.JF_LIBID}&Fields=Path`,
+                { headers: { "Accept-Encoding": "gzip,deflate,compress", "Authorization": `MediaBrowser Token="${process.env.JF_API_KEY}"` } }
             );
             this.jfLibrary = response.data.Items.map(jfSong => ({
                 id: jfSong.Id,
                 ytId: this.extractYtIdFromPath(jfSong.Path)
             }));
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error loading Jellyfin library:`, error.message);
+            logger.error('Error loading Jellyfin library:', error.message);
             this.jfLibrary = [];
         }
     }
@@ -57,33 +56,30 @@ class SyncManager {
         for (const playlist of playlists) {
             try {
                 const response = await axios.get(
-                    `${this.jfUrl}/Playlists/${playlist.jf_id}/Items?api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}&Fields=Path`,
-                    { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
+                    `${this.jfUrl}/Playlists/${playlist.jf_id}/Items?userId=${process.env.JF_UID}&Fields=Path`,
+                    { headers: { "Accept-Encoding": "gzip,deflate,compress", "Authorization": `MediaBrowser Token="${process.env.JF_API_KEY}"` } }
                 );
                 this.jfPlaylists[playlist.jf_id] = response.data.Items.map(jfSong => ({
                     ytId: this.extractYtIdFromPath(jfSong.Path),
                     playlistItemId: jfSong.PlaylistItemId
                 }));
             } catch (error) {
-                console.error(`[${new Date().toISOString()}]: Error loading Jellyfin playlist ${playlist.jf_id}:`, error.message);
+                logger.error(`Error loading Jellyfin playlist ${playlist.jf_id}:`, error.message);
                 this.jfPlaylists[playlist.jf_id] = [];
             }
         }
     }
 
     async syncYouTubePlaylists() {
-        console.log(`[${new Date().toISOString()}]: Syncing YouTube playlists...`);
+        await logger.syncOperation('Syncing YouTube playlists', async () => {
+            this.resetYouTubeData();
+            const playlists = await dbQuery('SELECT * FROM playlists ORDER BY name');
 
-        this.resetYouTubeData();
-        const playlists = await dbQuery('SELECT * FROM playlists ORDER BY name');
+            for (const playlist of playlists)
+                await this.fetchYouTubePlaylist(playlist);
 
-        for (const playlist of playlists) {
-            await this.fetchYouTubePlaylist(playlist);
-        }
-
-        await this.syncAllPlaylists();
-
-        console.log(`[${new Date().toISOString()}]: YouTube sync complete. Processed ${this.apiCallCount} API calls`);
+            logger.info(`YouTube sync complete. Processed ${this.apiCallCount} API calls`);
+        });
     }
 
     resetYouTubeData() {
@@ -97,8 +93,6 @@ class SyncManager {
         this.ytPlaylists[ytPlaylistId] = new Set();
         let pageToken = "";
         let hasMorePages = true;
-
-        console.log(`[${new Date().toISOString()}]: Fetching YouTube playlist: ${playlist.name}`);
 
         while (hasMorePages && this.apiCallCount < this.maxApiCalls) {
             try {
@@ -119,28 +113,25 @@ class SyncManager {
                 hasMorePages = !!response.data.nextPageToken;
 
             } catch (error) {
-                console.error(`[${new Date().toISOString()}]: YouTube API Error for playlist ${playlist.name}:`, error.response?.data || error.message);
+                logger.error(`YouTube API Error for playlist ${playlist.name}:`, error.response?.data || error.message);
                 break;
             }
         }
 
-        console.log(`[${new Date().toISOString()}]: "${playlist.name}": ${this.ytPlaylists[ytPlaylistId].size} items`);
+        logger.info(`YouTube playlist "${playlist.name}": ${this.ytPlaylists[ytPlaylistId].size} items`);
     }
 
     async syncAllPlaylists() {
         const playlists = await dbQuery('SELECT * FROM playlists');
         const songsToDownload = new Set();
 
-        console.log(`[${new Date().toISOString()}]: Syncing individual playlists...`);
+        await logger.syncOperation('Syncing individual playlists', async () => {
+            for (const playlist of playlists) {
+                await this.syncSinglePlaylist(playlist, songsToDownload);
+            }
 
-        for (const playlist of playlists) {
-            await this.syncSinglePlaylist(playlist, songsToDownload);
-        }
-
-        await this.downloadManager.processDownloads(songsToDownload);
-        await this.fileManager.cleanupOrphanedFiles(this.ytSongs);
-
-        console.log(`[${new Date().toISOString()}]: All playlists synced. ${songsToDownload.size} songs to download`);
+            await this.downloadManager.processDownloads(songsToDownload);
+        });
     }
 
     async syncSinglePlaylist(playlist, songsToDownload) {
@@ -155,7 +146,7 @@ class SyncManager {
         const songsToRemove = jfPlaylist.filter(jfSong => !ytPlaylist.has(jfSong.ytId));
 
         if (songsToRemove.length > 0) {
-            console.log(`[${new Date().toISOString()}]: Removing ${songsToRemove.length} songs from ${playlist.name}`);
+            logger.info(`Removing ${songsToRemove.length} songs from ${playlist.name}`);
             await this.removeSongsFromPlaylist(playlist.jf_id, songsToRemove);
         }
     }
@@ -164,18 +155,18 @@ class SyncManager {
         const existingYtIds = new Set(jfPlaylist.map(song => song.ytId));
         const songsToAdd = Array.from(ytPlaylist).filter(ytId => !existingYtIds.has(ytId));
 
-        if (songsToAdd.length > 0) {
-            console.log(`[${new Date().toISOString()}]: Adding ${songsToAdd.length} songs to ${playlist.name}`);
-        }
-
+        let addToPlaylist = 0;
         for (const ytId of songsToAdd) {
             const jfSong = this.jfLibrary.find(song => song.ytId === ytId);
             if (jfSong) {
                 await this.addSongToPlaylist(playlist.jf_id, jfSong.id);
+                addToPlaylist++;
             } else if (!this.downloadManager.isFileDownloaded(ytId)) {
                 songsToDownload.add(ytId);
             }
         }
+        if(addToPlaylist > 0)
+            logger.info(`Added ${addToPlaylist} songs to ${playlist.name}`);
     }
 
     // Helper methods
@@ -187,26 +178,32 @@ class SyncManager {
             const batch = songIds.slice(i, i + batchSize);
             const entryIds = batch.join(',');
 
+            if(process.env.DRY_RUN)
+                continue;
+
             try {
                 await axios.delete(
-                    `${this.jfUrl}/Playlists/${playlistId}/Items?EntryIds=${entryIds}&api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}`,
-                    { headers: { "Accept-Encoding": "gzip,deflate,br" } }
+                    `${this.jfUrl}/Playlists/${playlistId}/Items?EntryIds=${entryIds}&userId=${process.env.JF_UID}`,
+                    { headers: { "Accept-Encoding": "gzip,deflate,compress", "Authorization": `MediaBrowser Token="${process.env.JF_API_KEY}"` } }
                 );
             } catch (error) {
-                console.error(`[${new Date().toISOString()}]: Error removing songs from playlist ${playlistId}:`, error.message);
+                logger.error(`Error removing songs from playlist ${playlistId}:`, error.message);
             }
         }
     }
 
     async addSongToPlaylist(playlistId, songId) {
+        if(process.env.DRY_RUN)
+            return;
+
         try {
             await axios.post(
-                `${this.jfUrl}/Playlists/${playlistId}/Items?Ids=${songId}&api_key=${process.env.JF_API_KEY}&userId=${process.env.JF_UID}`,
+                `${this.jfUrl}/Playlists/${playlistId}/Items?Ids=${songId}&userId=${process.env.JF_UID}`,
                 {},
-                { headers: { "Accept-Encoding": "gzip,deflate,compress" } }
+                { headers: { "Accept-Encoding": "gzip,deflate,compress", "Authorization": `MediaBrowser Token="${process.env.JF_API_KEY}"` } }
             );
         } catch (error) {
-            console.error(`[${new Date().toISOString()}]: Error adding song to playlist ${playlistId}:`, error.message);
+            logger.error(`Error adding song to playlist ${playlistId}:`, error.message);
         }
     }
 

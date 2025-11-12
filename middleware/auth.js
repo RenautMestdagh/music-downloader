@@ -1,5 +1,6 @@
 // middleware/auth.js
 const basicAuth = require('express-basic-auth');
+const logger = require('../utils/logger'); // Add this
 
 // Basic auth middleware
 const basicAuthMiddleware = basicAuth({
@@ -30,7 +31,7 @@ const sessionAuth = (req, res, next) => {
         req.session.user = process.env.BASIC_AUTH_USER;
         req.session.cookie.maxAge = 60 * 60 * 1000; // 1 hour
 
-        console.log(`[${new Date().toISOString()}]: User ${req.session.user} authenticated via session`);
+        logger.info(`User ${req.session.user} authenticated via session`);
         next();
     });
 };
