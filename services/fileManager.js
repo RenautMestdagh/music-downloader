@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { storagePath, tmpSongsPath, tmpImgPath } = require('../config/paths');
+const logger = require('../utils/logger'); // Add this
 
 /**
  * File system operations manager
@@ -25,55 +26,61 @@ class FileManager {
     }
 
     async clearTemporaryFiles() {
-        const tmpDirs = [this.tmpSongsPath, this.tmpImgPath];
-        let totalCleaned = 0;
+        await logger.fileOperation('Deleting leftover temporary files', async () => {
+            const tmpDirs = [this.tmpSongsPath, this.tmpImgPath];
+            let totalCleaned = 0;
 
-        for (const tmpDir of tmpDirs) {
-            if (fs.existsSync(tmpDir)) {
-                const files = fs.readdirSync(tmpDir);
-                totalCleaned += files.length;
+            for (const tmpDir of tmpDirs) {
+                if (fs.existsSync(tmpDir)) {
+                    const files = fs.readdirSync(tmpDir);
+                    totalCleaned += files.length;
 
-                for (const file of files) {
-                    try {
-                        fs.unlinkSync(path.join(tmpDir, file));
-                    } catch (error) {
-                        console.error(`[${new Date().toISOString()}]: Error deleting tmp file ${file}:`, error.message);
+                    for (const file of files) {
+                        try {
+                            fs.unlinkSync(path.join(tmpDir, file));
+                            logger.info(`Removed leftover temporary file: ${file}`);
+                        } catch (error) {
+                            logger.error(`Error deleting tmp file ${file}:`, error.message);
+                        }
                     }
                 }
             }
-        }
+        });
     }
 
     async cleanupOrphanedFiles(activeYtIds) {
         if (!fs.existsSync(this.storagePath))
             return;
 
-        console.log(`[${new Date().toISOString()}]: Checking for orphaned files...`);
+        await logger.fileOperation('Checking for orphaned files', async () => {
+            const files = fs.readdirSync(this.storagePath);
+            let orphansRemoved = 0;
 
-        const files = fs.readdirSync(this.storagePath);
-        let orphansRemoved = 0;
+            for (const file of files) {
+                if (!file.endsWith('.mp3')) continue;
 
-        for (const file of files) {
-            if (!file.endsWith('.mp3')) continue;
+                const ytId = path.parse(file).name;
 
-            const ytId = path.parse(file).name;
+                if (!activeYtIds.has(ytId)) {
+                    if(process.env.DRY_RUN)
+                        continue;
 
-            if (!activeYtIds.has(ytId)) {
-                try {
-                    fs.unlinkSync(path.join(this.storagePath, file));
-                    orphansRemoved++;
-                    console.log(`[${new Date().toISOString()}]: Removed orphaned file: ${file}`);
-                } catch (error) {
-                    console.error(`[${new Date().toISOString()}]: Error removing orphaned file ${file}:`, error.message);
+                    try {
+                        fs.unlinkSync(path.join(this.storagePath, file));
+                        orphansRemoved++;
+                        logger.info(`Removed orphaned file: ${file}`);
+                    } catch (error) {
+                        logger.error(`Error removing orphaned file ${file}:`, error.message);
+                    }
                 }
             }
-        }
 
-        if (orphansRemoved > 0) {
-            console.log(`[${new Date().toISOString()}]: Removed ${orphansRemoved} orphaned files`);
-        } else {
-            console.log(`[${new Date().toISOString()}]: No orphaned files found`);
-        }
+            if (orphansRemoved > 0) {
+                logger.info(`Removed ${orphansRemoved} orphaned files`);
+            } else {
+                logger.info('No orphaned files found');
+            }
+        });
     }
 }
 

@@ -9,6 +9,7 @@ const { auth } = require("./middleware/auth");
 const downloadService = require('./services/downloadService');
 const paths = require('./config/paths');
 const fs = require("fs");
+const logger = require('./utils/logger'); // Add this
 
 const app = express();
 
@@ -83,7 +84,7 @@ app.post('/login', express.json(), (req, res) => {
 app.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            console.error(`[${new Date().toISOString()}]: Error destroying session:`,err);
+            logger.error('Error destroying session:', err);
         }
         res.json({ success: true, message: 'Logged out successfully' });
     });
@@ -106,7 +107,7 @@ app.use('/api', auth, require('./routes/api'));
 
 // Error Handling
 app.use((err, req, res, next) => {
-    console.error(`[${new Date().toISOString()}]: Error:`,err.stack);
+    logger.error('Error:', err.stack);
 
     if (err.status === 401) {
         return res.status(401).set('WWW-Authenticate', 'Basic realm="Protected Area"').send('Unauthorized');
@@ -124,14 +125,15 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
-    console.log(`[${new Date().toISOString()}]: Music Downloader running on port ${PORT}`);
-    console.log(`[${new Date().toISOString()}]: Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`Music Downloader running on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`Log level: ${logger.levelNames[logger.currentLevel]}`);
 
     // Start the download service (runs independently)
     try {
         await downloadService.initialize();
-        console.log(`[${new Date().toISOString()}]: Download service initialized successfully`);
+        logger.info('Download service initialized successfully');
     } catch (error) {
-        console.error(`[${new Date().toISOString()}]: Failed to initialize download service:`, error);
+        logger.error('Failed to initialize download service:', error);
     }
 });
