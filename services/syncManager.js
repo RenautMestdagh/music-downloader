@@ -27,8 +27,7 @@ class SyncManager {
         await logger.syncOperation('Loading Jellyfin library data', async () => {
             await this.loadJellyfinLibrary();
             await this.loadJellyfinPlaylists();
-            logger.info(`Loaded ${this.jfLibrary.length} library items and ${Object.keys(this.jfPlaylists).length} playlists`);
-
+            logger.info(`Loaded ${logger.pluralize(this.jfLibrary.length, 'item')} and ${logger.pluralize(Object.keys(this.jfPlaylists).length, 'playlist')}`);
             this.downloadManager.loadDownloadedFiles();
         });
     }
@@ -78,7 +77,7 @@ class SyncManager {
             for (const playlist of playlists)
                 await this.fetchYouTubePlaylist(playlist);
 
-            logger.info(`YouTube sync complete. Processed ${this.apiCallCount} API calls`);
+            logger.info(`YouTube sync complete. Processed ${logger.pluralize(this.apiCallCount, 'API call')}`);
         });
     }
 
@@ -118,7 +117,7 @@ class SyncManager {
             }
         }
 
-        logger.info(`YouTube playlist "${playlist.name}": ${this.ytPlaylists[ytPlaylistId].size} items`);
+        logger.info(`YouTube playlist "${playlist.name}": ${logger.pluralize(this.ytPlaylists[ytPlaylistId].size, 'item')}`);
     }
 
     async syncAllPlaylists() {
@@ -146,7 +145,7 @@ class SyncManager {
         const songsToRemove = jfPlaylist.filter(jfSong => !ytPlaylist.has(jfSong.ytId));
 
         if (songsToRemove.length > 0) {
-            logger.info(`Removing ${songsToRemove.length} songs from ${playlist.name}`);
+            logger.info(`Removing ${logger.pluralize(songsToRemove.length, 'song')} from ${playlist.name}`);
             await this.removeSongsFromPlaylist(playlist.jf_id, songsToRemove);
         }
     }
@@ -166,7 +165,7 @@ class SyncManager {
             }
         }
         if(addToPlaylist > 0)
-            logger.info(`Added ${addToPlaylist} songs to ${playlist.name}`);
+            logger.info(`Added ${logger.pluralize(addToPlaylist, 'song')} to ${playlist.name}`);
     }
 
     // Helper methods

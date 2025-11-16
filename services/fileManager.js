@@ -76,7 +76,7 @@ class FileManager {
             }
 
             if (orphansRemoved > 0) {
-                logger.info(`Removed ${orphansRemoved} orphaned files`);
+                logger.info(`Removed ${logger.pluralize(orphansRemoved, 'orphaned file')}`);
             } else {
                 logger.info('No orphaned files found');
             }

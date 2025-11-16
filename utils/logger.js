@@ -107,6 +107,10 @@ class Logger {
             this.groupEnd();
         }
     }
+
+    pluralize(count, word, pluralForm = null) {
+        return `${count} ${count === 1 ? word : (pluralForm || word + 's')}`;
+    }
 }
 
 // Create singleton instance
