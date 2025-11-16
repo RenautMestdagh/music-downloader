@@ -38,7 +38,7 @@ class DownloadManager {
             ? fs.readdirSync(this.storagePath).map(filename => path.parse(filename).name)
             : [];
 
-        logger.info(`Loaded ${this.downloadedFiles.length} downloaded files`);
+        logger.info(`Loaded ${logger.pluralize(this.downloadedFiles.length, 'downloaded file')}`);
     }
 
     isFileDownloaded(ytId) {
@@ -51,7 +51,7 @@ class DownloadManager {
             return;
         }
 
-        logger.info(`Processing ${songsToDownload.size} downloads...`);
+        logger.info(`Processing ${logger.pluralize(songsToDownload.size, 'download')}...`);
 
         const downloadPromises = Array.from(songsToDownload).map(ytId =>
             this.downloadSongWithConcurrency(ytId)

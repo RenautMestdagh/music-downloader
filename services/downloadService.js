@@ -35,7 +35,8 @@ class DownloadService {
                 await this.syncManager.loadLibraryData();
                 await this.syncManager.syncYouTubePlaylists();
                 await this.syncManager.syncAllPlaylists();
-                await this.fileManager.cleanupOrphanedFiles(this.syncManager.ytSongs);
+                if(!process.env.DISABLE_PRUNING)
+                    await this.fileManager.cleanupOrphanedFiles(this.syncManager.ytSongs);
                 await this.fileManager.clearTemporaryFiles();
             });
         } catch (error) {
