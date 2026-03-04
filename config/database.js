@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const paths = require('./paths');
-const logger = require('../utils/logger'); // Add this
+const logger = require('../utils/logger');
 
 const DB_PATH = paths.dbPath;
 const DB_DIR = path.dirname(DB_PATH);
@@ -34,12 +34,11 @@ db.serialize(() => {
     // Create playlists table
     db.run(`
         CREATE TABLE IF NOT EXISTS playlists (
-                                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                 name TEXT NOT NULL,
-                                                 jf_id TEXT UNIQUE NOT NULL,
-                                                 yt_id TEXT UNIQUE NOT NULL,
-                                                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            yt_id TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
 });

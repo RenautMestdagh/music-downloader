@@ -1,5 +1,7 @@
 FROM node:24-alpine
 
+ENV NODE_ENV=production
+
 # Install dependencies
 RUN apk add --no-cache \
     python3 \
@@ -44,6 +46,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD node -
 USER node
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 CMD [ "npm", "start" ]
