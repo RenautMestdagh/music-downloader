@@ -54,9 +54,15 @@ class FileManager {
             return;
 
         await logger.fileOperation('Checking for orphaned files', async () => {
-            const files = fs.readdirSync(this.storagePath);
+            const items = fs.readdirSync(this.storagePath);
             let mp3OrphansRemoved = 0;
             let m3uOrphansRemoved = 0;
+
+            // Filter to only include files (not directories)
+            const files = items.filter(item => {
+                const itemPath = path.join(this.storagePath, item);
+                return fs.statSync(itemPath).isFile();
+            });
 
             // Get valid playlist names for M3U cleanup
             let validPlaylistNames = new Set();
