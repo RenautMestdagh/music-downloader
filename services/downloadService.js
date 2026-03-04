@@ -1,7 +1,7 @@
 // services/downloadService.js
 const SyncManager = require('./syncManager');
 const FileManager = require('./fileManager');
-const logger = require('../utils/logger'); // Add this
+const logger = require('../utils/logger');
 
 /**
  * Main service orchestrator for sync cycles and scheduling
@@ -35,7 +35,7 @@ class DownloadService {
                 await this.syncManager.loadLibraryData();
                 await this.syncManager.syncYouTubePlaylists();
                 await this.syncManager.syncAllPlaylists();
-                if(!process.env.DISABLE_PRUNING)
+                if(!parseInt(process.env.DISABLE_PRUNING,10))
                     await this.fileManager.cleanupOrphanedFiles(this.syncManager.ytSongs);
                 await this.fileManager.clearTemporaryFiles();
             });

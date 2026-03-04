@@ -1,6 +1,6 @@
 // middleware/auth.js
 const basicAuth = require('express-basic-auth');
-const logger = require('../utils/logger'); // Add this
+const logger = require('../utils/logger');
 
 // Basic auth middleware
 const basicAuthMiddleware = basicAuth({

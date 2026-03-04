@@ -9,7 +9,7 @@ const { auth } = require("./middleware/auth");
 const downloadService = require('./services/downloadService');
 const paths = require('./config/paths');
 const fs = require("fs");
-const logger = require('./utils/logger'); // Add this
+const logger = require('./utils/logger');
 
 const app = express();
 
@@ -123,7 +123,7 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Not Found' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 app.listen(PORT, async () => {
     logger.info(`Music Downloader running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);

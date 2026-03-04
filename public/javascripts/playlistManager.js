@@ -2,7 +2,6 @@
 class PlaylistManager {
     constructor() {
         this.playlists = window.playlists || [];
-        this.jf_url = window.jf_url || '';
         this.currentTitle = window.currentTitle || 'Playlist Config';
         this.editingPlaylistIndex = null;
         this.init();
@@ -35,7 +34,6 @@ class PlaylistManager {
 
         const ytId = playlist.yt_id || '';
         const name = playlist.name || '';
-        const jfId = playlist.jf_id || '';
 
         element.innerHTML = `
             <div class="playlist-header">
@@ -56,14 +54,6 @@ class PlaylistManager {
                     <span>
                         <a href="https://music.youtube.com/playlist?list=${ytId}" target="_blank" class="yt-link">
                             ${ytId}
-                        </a>
-                    </span>
-                </div>
-                <div class="playlist-info-row">
-                    <span>Jellyfin ID:</span>
-                    <span>
-                        <a href="${this.jf_url}/web/#/details?id=${jfId}" target="_blank" class="jf-link">
-                            ${jfId}
                         </a>
                     </span>
                 </div>
@@ -299,7 +289,7 @@ class PlaylistManager {
             return;
         }
 
-        if (!confirm(`Are you sure you want to delete the playlist "${playlistName}"? This action cannot be undone.`)) {
+        if (!confirm(`Are you sure you want to delete playlist "${playlistName}"? This action cannot be undone.`)) {
             return;
         }
 

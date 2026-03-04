@@ -6,7 +6,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { storagePath, tmpSongsPath, tmpImgPath } = require('../config/paths');
-const logger = require('../utils/logger'); // Add this
+const logger = require('../utils/logger');
 
 /**
  * YouTube video download and processing manager
@@ -35,10 +35,12 @@ class DownloadManager {
 
     loadDownloadedFiles() {
         this.downloadedFiles = fs.existsSync(this.storagePath)
-            ? fs.readdirSync(this.storagePath).map(filename => path.parse(filename).name)
+            ? fs.readdirSync(this.storagePath)
+                .filter(filename => path.extname(filename).toLowerCase() === '.mp3')
+                .map(filename => path.parse(filename).name)
             : [];
 
-        logger.info(`Loaded ${logger.pluralize(this.downloadedFiles.length, 'downloaded file')}`);
+        logger.info(`Loaded ${logger.pluralize(this.downloadedFiles.length, 'downloaded MP3 file')}`);
     }
 
     isFileDownloaded(ytId) {
@@ -166,7 +168,7 @@ class DownloadManager {
         const ffmpegCommand = this.buildFfmpegMetadataCommand(tempAudioPath, metadata, ytId);
         execSync(ffmpegCommand, { encoding: 'utf-8' });
 
-        if(process.env.DRY_RUN)
+        if(parseInt(process.env.DRY_RUN,10))
             return;
 
         // Add cover art to final file
