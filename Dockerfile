@@ -3,10 +3,12 @@ FROM node:24-alpine
 ENV NODE_ENV=production
 
 # Install dependencies
+# pinning down ffmpeg to v7
+# https://code.ffmpeg.org/FFmpeg/FFmpeg/issues/20954
 RUN apk add --no-cache \
     python3 \
     py3-pip \
-    ffmpeg \
+    ffmpeg7 \
     shadow
 
 # Install 'shadow' if 'usermod' isn't available, but generally
