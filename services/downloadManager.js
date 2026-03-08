@@ -133,7 +133,7 @@ class DownloadManager {
                     'user-agent:googlebot'
                 ],
                 output: filePath,
-                format: 'bestaudio',
+                format: 'ba/ba*',
             });
             if (fs.existsSync(filePath))
                 return;
