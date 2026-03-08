@@ -1,5 +1,5 @@
 // config/database.js
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const paths = require('./paths');
@@ -16,23 +16,23 @@ if (!fs.existsSync(DB_DIR)) {
     });
 }
 
-const db = new sqlite3.Database(DB_PATH, (err) => {
-    if (err) {
-        logger.error('Database connection error:', err.message);
-    } else {
-        logger.info(`Connected to SQLite database at ${DB_PATH}`);
+let db;
+try {
+    db = new Database(DB_PATH);
+    logger.info(`Connected to SQLite database at ${DB_PATH}`);
 
-        // Enable foreign key constraints and better performance
-        db.run('PRAGMA foreign_keys = ON');
-        db.run('PRAGMA journal_mode = WAL');
-        db.run('PRAGMA synchronous = NORMAL');
-    }
-});
+    // Enable foreign key constraints and better performance
+    db.pragma('foreign_keys = ON');
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+} catch (err) {
+    logger.error('Database connection error:', err.message);
+}
 
 // Initialize database schema
-db.serialize(() => {
+try {
     // Create playlists table
-    db.run(`
+    db.exec(`
         CREATE TABLE IF NOT EXISTS playlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
@@ -41,34 +41,41 @@ db.serialize(() => {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
-});
+} catch (err) {
+    logger.error('Database initialization error:', err.message);
+}
 
-// Database helper functions
-const dbQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
+// Database helper functions wrapped as promises for backwards compatibility
+const dbQuery = async (sql, params = []) => {
+    try {
+        const stmt = db.prepare(sql);
+        // Ensure params is an array
+        const args = Array.isArray(params) ? params : [params];
+        return stmt.all(...args);
+    } catch (err) {
+        throw err;
+    }
 };
 
-const dbGet = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
+const dbGet = async (sql, params = []) => {
+    try {
+        const stmt = db.prepare(sql);
+        const args = Array.isArray(params) ? params : [params];
+        return stmt.get(...args);
+    } catch (err) {
+        throw err;
+    }
 };
 
-const dbRun = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve({ id: this.lastID, changes: this.changes });
-        });
-    });
+const dbRun = async (sql, params = []) => {
+    try {
+        const stmt = db.prepare(sql);
+        const args = Array.isArray(params) ? params : [params];
+        const result = stmt.run(...args);
+        return { id: result.lastInsertRowid, changes: result.changes };
+    } catch (err) {
+        throw err;
+    }
 };
 
 module.exports = {
