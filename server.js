@@ -3,7 +3,6 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
 
 const { auth } = require("./middleware/auth");
 const downloadService = require('./services/downloadService');
@@ -31,11 +30,6 @@ if (!fs.existsSync(DB_DIR)) {
 // Enhanced session configuration
 app.use(
     session({
-        store: new SQLiteStore({
-            db: 'sessions.db',
-            dir: DB_DIR,
-            table: 'sessions'
-        }),
         secret: process.env.SESSION_SECRET || 'music-downloader-secret-key-change-in-production',
         resave: false,
         saveUninitialized: false,
