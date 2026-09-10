@@ -2,7 +2,6 @@
 class PlaylistManager {
     constructor() {
         this.playlists = window.playlists || [];
-        this.currentTitle = window.currentTitle || 'Playlist Config';
         this.editingPlaylistIndex = null;
         this.init();
     }
@@ -10,6 +9,8 @@ class PlaylistManager {
     init() {
         this.renderPlaylists();
         this.setupEventListeners();
+        this.checkSyncStatus();
+        this.startSyncStatusPolling();
     }
 
     renderPlaylists() {
@@ -358,6 +359,64 @@ class PlaylistManager {
             }
         });
     }
+
+    async checkSyncStatus() {
+        try {
+            const response = await fetch('/api/sync/status');
+            if (response.ok) {
+                const data = await response.json();
+                this.updateSyncButton(data.isSyncing);
+            }
+        } catch (error) {
+            console.error('Error checking sync status:', error);
+        }
+    }
+
+    startSyncStatusPolling() {
+        this.syncPollingInterval = setInterval(() => {
+            this.checkSyncStatus();
+        }, 5000);
+    }
+
+    updateSyncButton(isSyncing) {
+        const syncBtn = document.getElementById('syncBtn');
+        if (!syncBtn) return;
+
+        if (isSyncing) {
+            syncBtn.disabled = true;
+            syncBtn.innerHTML = '<span class="sync-icon">🔄</span> Syncing...';
+        } else {
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = '<span class="sync-icon">🔄</span> Sync';
+        }
+    }
+
+    async triggerSync() {
+        const syncBtn = document.getElementById('syncBtn');
+        if (!syncBtn) return;
+
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = '<span class="sync-icon">🔄</span> Syncing...';
+
+        try {
+            const response = await fetch('/api/sync/trigger', {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            this.showAlert(result.message, 'success');
+
+        } catch (error) {
+            console.error('Error triggering sync:', error);
+            this.showAlert(`Error triggering sync: ${error.message}`, 'error');
+            this.checkSyncStatus();
+        }
+    }
 }
 
 // Global functions
@@ -382,6 +441,12 @@ function savePlaylist() {
 function hideAlert() {
     if (window.playlistManager) {
         window.playlistManager.hideAlert();
+    }
+}
+
+function triggerSync() {
+    if (window.playlistManager) {
+        window.playlistManager.triggerSync();
     }
 }
 

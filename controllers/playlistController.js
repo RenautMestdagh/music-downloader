@@ -1,6 +1,7 @@
 // controllers/playlistController.js
 const { dbQuery, dbGet, dbRun } = require('../config/database');
 const M3UManager = require('../services/m3uManager');
+const downloadService = require('../services/downloadService');
 const logger = require('../utils/logger');
 
 class PlaylistController {
@@ -130,38 +131,22 @@ class PlaylistController {
         }
     }
 
-    // New method to get M3U playlists
-    async getM3UPlaylists(req, res) {
+    async getSyncStatus(req, res) {
         try {
-            const playlists = this.m3uManager.getAllPlaylists();
-            res.json(playlists);
+            const status = downloadService.getSyncStatus();
+            res.json(status);
         } catch (error) {
-            logger.error('Error getting M3U playlists:', error);
+            logger.error('Error getting sync status:', error);
             res.status(500).json({ error: error.message });
         }
     }
 
-    // New method to download M3U file
-    async downloadM3U(req, res) {
+    async triggerSync(req, res) {
         try {
-            const { name } = req.params;
-            const playlist = this.m3uManager.readPlaylist(name);
-            
-            if (playlist.songs.length === 0) {
-                return res.status(404).json({ error: 'Playlist not found or empty' });
-            }
-
-            const filename = `${name}.m3u`;
-            const filePath = require('path').join(require('../config/paths').storagePath, filename);
-            
-            res.download(filePath, filename, (err) => {
-                if (err) {
-                    logger.error('Error downloading M3U file:', err);
-                    res.status(500).json({ error: 'Error downloading file' });
-                }
-            });
+            const result = await downloadService.triggerManualSync();
+            res.json(result);
         } catch (error) {
-            logger.error('Error downloading M3U:', error);
+            logger.error('Error triggering sync:', error);
             res.status(500).json({ error: error.message });
         }
     }

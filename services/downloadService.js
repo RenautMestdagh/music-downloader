@@ -10,7 +10,8 @@ class DownloadService {
     constructor() {
         this.syncManager = new SyncManager();
         this.fileManager = new FileManager();
-        this.repeatInterval = 15 * 60 * 1000; // 15 minutes
+        this.repeatInterval = 24 * 60 * 60 * 1000; // 24 hours
+        this.isSyncing = false;
     }
 
     async initialize() {
@@ -22,7 +23,7 @@ class DownloadService {
         const executionDelay = delay !== null ? delay : this.repeatInterval;
         const nextExecutionTime = new Date(Date.now() + executionDelay);
 
-        setTimeout(() => {
+        this.syncTimeout = setTimeout(() => {
             this.executeSyncCycle();
         }, executionDelay);
 
@@ -30,6 +31,12 @@ class DownloadService {
     }
 
     async executeSyncCycle() {
+        if (this.isSyncing) {
+            logger.info('Sync already in progress, skipping');
+            return;
+        }
+
+        this.isSyncing = true;
         try {
             await logger.syncOperation('Sync cycle', async () => {
                 await this.syncManager.loadLibraryData();
@@ -42,8 +49,29 @@ class DownloadService {
         } catch (error) {
             logger.error('Sync cycle failed:', error);
         } finally {
+            this.isSyncing = false;
             this.scheduleNextExecution();
         }
+    }
+
+    getSyncStatus() {
+        return {
+            isSyncing: this.isSyncing
+        };
+    }
+
+    async triggerManualSync() {
+        if (this.isSyncing) {
+            return { success: false, message: 'Sync already in progress' };
+        }
+        
+        // Cancel any pending scheduled sync
+        if (this.syncTimeout) {
+            clearTimeout(this.syncTimeout);
+        }
+        
+        await this.executeSyncCycle();
+        return { success: true, message: 'Sync triggered successfully' };
     }
 }
 

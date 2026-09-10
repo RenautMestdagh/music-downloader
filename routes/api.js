@@ -9,4 +9,8 @@ router.post('/playlists', playlistController.createPlaylist);
 router.put('/playlists/:id', playlistController.updatePlaylist);
 router.delete('/playlists/:id', playlistController.deletePlaylist);
 
+// Sync API Endpoints
+router.get('/sync/status', playlistController.getSyncStatus);
+router.post('/sync/trigger', playlistController.triggerSync);
+
 module.exports = router;

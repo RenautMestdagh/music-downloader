@@ -7,6 +7,9 @@ block content
             .title-container
                 h1.title= title
             .header-actions
+                button.btn.btn-secondary#syncBtn(type="button" onclick="triggerSync()" disabled)
+                    span.sync-icon 🔄
+                    | Sync
                 button.btn.btn-primary(type="button" onclick="showAddPlaylistModal()")
                     span.plus-icon +
                     | Add New Playlist
@@ -48,6 +51,5 @@ block content
 
     script.
         window.playlists = !{data};
-        window.currentTitle = '#{title}';
 
     script(src=`javascripts/playlistManager.js` defer)
