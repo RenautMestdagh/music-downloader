@@ -24,7 +24,7 @@ The application is structured to decouple the web interface from the download pr
 
 - **Backend:** Node.js with Express, handling API routes and session authentication.
 - **Frontend:** Server-side rendered pages using Pug and plain web technologies.
-- **Database:** SQLite (with Sequelize) is used for managing download history and secure sessions.
+- **Database:** SQLite (via better-sqlite3) is used for managing download history and secure sessions.
 - **Services:** A standalone download service (`services/downloadService.js`) processes the download queue independently of web requests.
 - **Media Optimization:** Integrates `sharp` for potential image and thumbnail processing.
 
