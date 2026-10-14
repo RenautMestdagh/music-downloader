@@ -52,6 +52,12 @@ cp .env.example .env
 
 _(Make sure to update `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` in your `.env` file)._
 
+   Secrets can also be read from files (e.g. Docker secrets) by setting `<NAME>_FILE` to the file path; it takes precedence over the plain variable:
+   - `SESSION_SECRET` (or `SESSION_SECRET_FILE`)
+   - `BASIC_AUTH_USER` (or `BASIC_AUTH_USER_FILE`)
+   - `BASIC_AUTH_PASSWORD` (or `BASIC_AUTH_PASSWORD_FILE`)
+   - `YT_API_KEY` (or `YT_API_KEY_FILE`)
+
 4. Start the server:
 
 ```bash

@@ -7,6 +7,7 @@ const session = require('express-session');
 const { auth } = require("./middleware/auth");
 const downloadService = require('./services/downloadService');
 const paths = require('./config/paths');
+const { secrets } = require('./config/secrets');
 const fs = require("fs");
 const logger = require('./utils/logger');
 
@@ -30,7 +31,7 @@ if (!fs.existsSync(DB_DIR)) {
 // Enhanced session configuration
 app.use(
     session({
-        secret: process.env.SESSION_SECRET || 'music-downloader-secret-key-change-in-production',
+        secret: secrets.SESSION_SECRET || 'music-downloader-secret-key-change-in-production',
         resave: false,
         saveUninitialized: false,
         cookie: {
@@ -63,7 +64,7 @@ app.get('/health', (req, res) => {
 app.post('/login', express.json(), (req, res) => {
     const { username, password } = req.body;
 
-    if (username === process.env.BASIC_AUTH_USER && password === process.env.BASIC_AUTH_PASSWORD) {
+    if (username === secrets.BASIC_AUTH_USER && password === secrets.BASIC_AUTH_PASSWORD) {
         req.session.authenticated = true;
         req.session.user = username;
         req.session.cookie.maxAge = 60 * 60 * 1000;
