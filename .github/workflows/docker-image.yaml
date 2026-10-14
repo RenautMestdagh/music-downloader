@@ -1,35 +1,63 @@
-name: Deploy project
+name: Build and deploy
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Never run two deploys at the same time, finish the running one first
+concurrency:
+  group: production
+  cancel-in-progress: false
+
 jobs:
-  docker-build-and-push:
+  build:
+    name: Build image
     runs-on: ubuntu-latest
     steps:
-      - name: checkout repo
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v7
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v3
+      - uses: docker/build-push-action@v7
         with:
-          context: ./
+          context: .
           platforms: linux/amd64,linux/arm64
-          file: ./Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/music-downloader:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to rennet-nas
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      # Komodo pulls :latest and recreates the container. The API key belongs to a
+      # Komodo service user that may only deploy the music-downloader stack.
+      # Keep the CLI version equal to Komodo Core (hosts/rennet-server/komodo in homelab).
+      - name: Deploy music-downloader via Komodo
+        env:
+          KOMODO_CLI_HOST: https://komodo.rennet.duckdns.org
+          KOMODO_CLI_KEY: ${{ secrets.KOMODO_API_KEY }}
+          KOMODO_CLI_SECRET: ${{ secrets.KOMODO_API_SECRET }}
+        run: |
+          # The CLI image ships without CA certificates, borrow the runner's for HTTPS
+          docker run --rm -e KOMODO_CLI_HOST -e KOMODO_CLI_KEY -e KOMODO_CLI_SECRET \
+            -v /etc/ssl/certs:/etc/ssl/certs:ro \
+            ghcr.io/moghtech/komodo-cli:2.3.3 \
+            km deploy -y stack music-downloader 2>&1 | tee km.log
+          # km exits 0 even when the deploy fails
+          grep -q "EXECUTION SUCCESSFUL" km.log
