@@ -4,6 +4,7 @@ const { dbQuery } = require('../config/database');
 const DownloadManager = require('./downloadManager');
 const M3UManager = require('./m3uManager');
 const logger = require('../utils/logger');
+const { secrets } = require('../config/secrets');
 
 /**
  * Synchronization manager for YouTube and M3U playlist integration
@@ -56,7 +57,7 @@ class SyncManager {
             try {
                 const response = await axios({
                     method: "get",
-                    url: `https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50${pageToken}&playlistId=${ytPlaylistId}&key=${process.env.YT_API_KEY}`,
+                    url: `https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50${pageToken}&playlistId=${ytPlaylistId}&key=${secrets.YT_API_KEY}`,
                 });
 
                 this.apiCallCount++;

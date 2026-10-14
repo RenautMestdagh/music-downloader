@@ -1,11 +1,12 @@
 // middleware/auth.js
 const basicAuth = require('express-basic-auth');
 const logger = require('../utils/logger');
+const { secrets } = require('../config/secrets');
 
 // Basic auth middleware
 const basicAuthMiddleware = basicAuth({
     users: {
-        [process.env.BASIC_AUTH_USER]: process.env.BASIC_AUTH_PASSWORD
+        [secrets.BASIC_AUTH_USER]: secrets.BASIC_AUTH_PASSWORD
     },
     challenge: true,
     realm: 'Protected Area'
@@ -28,7 +29,7 @@ const sessionAuth = (req, res, next) => {
 
         // User passed basic auth - set session
         req.session.authenticated = true;
-        req.session.user = process.env.BASIC_AUTH_USER;
+        req.session.user = secrets.BASIC_AUTH_USER;
         req.session.cookie.maxAge = 60 * 60 * 1000; // 1 hour
 
         logger.info(`User ${req.session.user} authenticated via session`);
