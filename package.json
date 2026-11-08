@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "start": "node server.js",
-        "devstart": "node server.js",
+        "devstart": "infisical run --path=/music-downloader -- node server.js",
         "build": "sudo docker build . -t musicdownloader:latest"
     },
     "dependencies": {

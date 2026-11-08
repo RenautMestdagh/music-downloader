@@ -44,7 +44,10 @@ npm install
 ```
 
 3. Configure the environment:
-   Copy the example configuration to a new `.env` file and customize your settings.
+   The local values are in Infisical (homelab-rennet-nas → Development → `/music-downloader`);
+   `npm run devstart` loads them through the [Infisical CLI](https://infisical.com/docs/cli/overview)
+   (`infisical login` once). Without it, copy the example configuration to a new `.env` file and
+   customize your settings.
 
 ```bash
 cp .env.example .env
@@ -64,7 +67,7 @@ _(Make sure to update `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` in your `.env`
 npm start
 ```
 
-_For development, you can use `npm run devstart` (with nodemon, if configured)._
+_For development, use `npm run devstart`: `npm start` with the local values from Infisical._
 
 5. Open your browser and navigate to `http://localhost` (or your configured port).
 
