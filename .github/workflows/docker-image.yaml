@@ -1,9 +1,12 @@
 name: Build and deploy
 
+# A push to master only checks that the image builds. Publishing a GitHub release vX.Y.Z (the
+# version in package.json) pushes the image as X.Y.Z, X.Y and latest and deploys it.
 on:
   push:
     branches: [master]
-  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -11,7 +14,7 @@ permissions:
 
 # Never run two deploys at the same time, finish the running one first
 concurrency:
-  group: production
+  group: ${{ github.event_name == 'release' && 'production' || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -21,11 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Version matches the tag
+        if: github.event_name == 'release'
+        run: |
+          version=$(node -p "require('./package.json').version")
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "package.json has $version, tag $GITHUB_REF_NAME"; exit 1; }
+
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ghcr.io/renautmestdagh/music-downloader
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
       - uses: docker/setup-qemu-action@v4
 
       - uses: docker/setup-buildx-action@v4
 
       - uses: docker/login-action@v4
+        if: github.event_name == 'release'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -35,20 +53,21 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/renautmestdagh/music-downloader:latest
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
     name: Deploy
     needs: build
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment:
       name: production
     steps:
-      # Calls a deploy webhook (GitHub-style HMAC signature). Where it points is configured
-      # in the production environment's secrets, not in this repo.
+      # Calls the Komodo deploy webhook (GitHub-style HMAC signature), configured in the production environment's secrets
       - name: Trigger deploy webhook
         env:
           URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
