@@ -19,7 +19,10 @@ WORKDIR /usr/app
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+# better-sqlite3 13 ships no prebuilt binaries: compile it, then drop the compiler again
+RUN apk add --no-cache --virtual .build-deps make g++ && \
+    npm install && \
+    apk del .build-deps
 
 # Copy application code
 COPY . .
